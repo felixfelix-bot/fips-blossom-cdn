@@ -10,21 +10,28 @@ either cleared the critical unknown or killed the design.
 
 ---
 
-## 0. The one question this plan exists to answer
+## 0. The one question this plan exists to answer — **already answered**
 
 > Does running N FIPS sidecars under **one shared identity** produce
 > nearest-replica selection (anycast), or does it corrupt routing?
 
-Everything else — ansible roles, systemd timers, sync jobs — is plumbing that is
-worth nothing if the answer is "no" and is trivially reused if the answer is
-"yes". So it is Phase 3, and it is deliberately reachable with **two** hosts.
+**Answered: NO, and it corrupts routing.** Source read
+(`evidence/02-shared-identity-verdict.md`) shows FIPS draws a random *startup
+epoch* per process and classifies a known identity with a different epoch as **a
+peer that restarted** (`core/src/proto/fmp/core.rs:496` → `RestartThenPromote`;
+`src/node/handlers/handshake.rs:2393` → `close_session(...)`). Two
+shared-identity nodes tear each other's sessions down in a loop.
+
+**Phase 3 is therefore downgraded from "the critical unknown" to a ~30-minute
+live CONFIRMATION** of a predicted log line. It no longer gates a fleet build,
+because there is no longer a fleet build to gate — see §7 for the re-scope.
 
 Secondary questions, in order of how much they change the design:
 
 | # | Question | Phase | If the answer is bad |
 |---|---|---|---|
 | Q1 | Can a replication job enumerate what a peer region holds? | 2 | Replication must ship the blob contract, not just a hash list (GAP-2). |
-| Q2 | Does shared identity give anycast or corruption? | 3 | Design is "4 replicas", not "a CDN". Say so plainly. |
+| Q2 | Does shared identity give anycast or corruption? | 3 | **ANSWERED: corruption.** Design is "4 replicas", not "a CDN". Confirm live. |
 | Q3 | Is the throughput ceiling per-path or per-node? | 4 | If per-path, k replicas buy resilience, not bandwidth — economics change. |
 | Q4 | Does upload-only convergence actually converge under a 60 s cadence? | 5 | Raise cadence / switch to push-on-write. |
 | Q5 | Is a viewer routed to the near replica *and* does that beat origin? | 6 | The whole CDN premise fails; report it. |
@@ -44,6 +51,13 @@ exists to prevent.**
 | `local-two-daemon` | 1 host, 2 FIPS daemons in netns/Docker | identity mechanics, config, sync logic |
 | `lan-two-host` | 2 fleet hosts on one LAN | shared-identity behaviour, replication, throughput |
 | `fleet-four-host` | 4 fleet hosts | the full 4-region shape, convergence, retrieval |
+
+**Venue actually available (probed 2026-10-23, `evidence/00-venue-inventory.md`):**
+4 FIPS-capable hosts all already peering, but **only 3 countries and effectively
+2 real sites** (DE ×2 on one LAN/one public IP; US ×2 adjacent IPs same ASN; CH
+×1 peer with no sshd). **No UK, no Asia.** A `fleet-four-host` venue exists; a
+*four-region* claim does not. Also note **version drift**: VPS1/VPS2 on FIPS
+**0.5.1**, x280/dq05 on **0.5.3** — a confounder to record, not to ignore.
 
 ---
 
@@ -110,6 +124,27 @@ Deploy the spec's per-region unit, exactly as written, for one region.
 `node_exporter`-style health endpoint returns 200 with `{fips: up, blossom: up,
 last_sync: <ts>}`.
 
+### Phase 1.5 — 🔴 MESH DATA-PLANE GATE (blocking) · ~1 h
+
+**Measured 2026-10-23 (`evidence/00-venue-inventory.md` §D): the mesh does not
+currently carry application traffic to all our hosts.** From x280 and dq05,
+VPS2's `:3000`, `:9001`, `:7777` **time out** and `:8443` returns *connection
+refused*, while `:22` is open and VPS2's own self-test to its own fips address
+`:3000` succeeds. Only the SSH/control path is proven across all four nodes.
+
+**No CDN data-plane phase can be attempted until this is resolved.** Diagnose, in
+order:
+
+1. `fips-firewall.service` default-drops unknown ports on `fips0` — check for an
+   accept rule and whether `:3000` etc. are missing from it.
+2. Is the service bound to `127.0.0.1` only, rather than the `fips0` address?
+   (VPS2's `:3000` is bound by a `node` process — confirm its bind address.)
+3. `Connection refused` means *nothing listening* (not a routing failure); the
+   **timeouts** are the real signal and deserve the attention.
+
+**Gate:** a TCP connect from two distinct hosts to a test listener on a third
+host's `fips0:<port>` succeeds. Record the exact command and result.
+
 ### Phase 2 — Replication mechanism, two regions (2 hosts) · ~2 h
 
 **This is where GAP-2 bites.** Answer Q1 before writing the sync job properly.
@@ -132,9 +167,23 @@ last_sync: <ts>}`.
 **Acceptance:** blob uploaded to A appears on B within one sync interval;
 second run is a no-op; network failure is non-fatal and logged.
 
-### Phase 3 — 🔴 THE CRITICAL UNKNOWN: shared-identity sidecars (2 hosts) · ~2 h
+### Phase 3 — ✅ CONFIRMATION (was: the critical unknown): shared-identity sidecars (2 hosts) · ~30 min
 
-**Answer Q2. Everything downstream is contingent on this.**
+**Q2 is already answered from source (falsified — see §0).** This phase exists
+only to *confirm the prediction live*, and to have an artifact to hand the
+partner. **Pass condition is the ABSENCE of the predicted log lines, not the
+presence of a connection** — a connection will form, which is exactly what makes
+this trap deceptive.
+
+Check for, on both hosts:
+`Peer restart detected during promotion, replacing stale active peer` and
+`Cleared stale FSP session after peer restart during promotion`
+(`journalctl -u fips -f`), plus rising `parent_switches` in
+`fipsctl show tree`, sampled 60× at 5 s.
+
+If the lines appear → **prediction confirmed, shared sidecar is dead, stop.**
+If they do NOT appear → the source reading is wrong somewhere; investigate before
+trusting anything else in this plan.
 
 Setup: on host A run the region-A host node (unique identity) **plus** a sidecar
 using the shared CDN nsec. On host B, the same — region-B host node plus a
@@ -275,3 +324,37 @@ Headline: Q2 shared-identity verdict = <result>
 T5 gates everything from T6 on: if the verdict is "corruption", T6–T8 are
 cancelled and T9 becomes a findings report. **Do not build the fleet-wide ansible
 role before T5 returns a verdict.**
+
+| # | Task | Depends | Venue | Status |
+|---|---|---|---|---|
+| T0 | Venue inventory + FIPS pin check | — | fleet | ✅ done (`evidence/00`) |
+| T0b | Blossom HTTP surface recon | — | local | ✅ done (`evidence/01`) |
+| T1 | Shared-identity verdict | — | source | ✅ **falsified** (`evidence/02`) |
+| T1b | **Mesh data-plane gate (Phase 1.5)** | T0 | 3 hosts | ⬜ **blocking** |
+| T2 | `mk-fips-config.sh` (10 tests) | — | local | ✅ done |
+| T3 | `cdn-proxy.py` (10 tests) | — | local | ✅ done |
+| T4 | `sync-regions.py` (11 tests) | — | local | ✅ done |
+| T5 | Phase 3 live confirmation | T1b | 2 hosts | ⬜ ~30 min |
+| T6 | Two-region replication (Phase 2) | T5 | 2 hosts | ⬜ |
+| T7 | Throughput M1/M2 | T6 | 3–4 hosts | ⬜ |
+| T8 | Four-host convergence + reboot | T6 | 4 hosts | ⬜ |
+| T9 | Delivery quality — **needs a redesigned L4** | — | — | ⏸ blocked on design |
+| T10 | Report + handover to Archipelago | T8 | — | ⬜ |
+
+## 7. Re-scope after the GAP-1 falsification
+
+Because there is no network-layer anycast, the original goal — *"upload in one
+region, verify the blob is replicated and retrievable in all four"* — is still
+achievable as a **replicated blob store**, but it is **not a CDN**. Two options
+for the partner, and the choice belongs to them, not to us:
+
+- **(a) Ship the replicated store.** Four independent Blossom servers with
+  upload-only convergence and unique per-region identities. All of Phases 1–2,
+  4, 5 apply unchanged; drop the shared sidecar entirely. This is a real,
+  demonstrable artifact and can be finished on the current plan.
+- **(b) Build a real L4.** Keep the unique identities and add an explicit
+  nearest-region lookup (Nostr event advertising `region → npub` + a latency
+  probe, or a geo hint). Then Phase 6 becomes meaningful. This is new scope, not
+  a config change.
+
+Do not silently pick one. Present both with the falsification as the reason.
