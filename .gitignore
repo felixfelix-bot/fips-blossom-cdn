@@ -1,0 +1,8 @@
+.env
+fips.key
+fips.pub
+venv/
+.venv/
+__pycache__/
+*.pyc
+evidence/*.bin
