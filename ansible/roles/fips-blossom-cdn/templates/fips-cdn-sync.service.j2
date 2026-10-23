@@ -1,0 +1,17 @@
+[Unit]
+Description=Blossom CDN cross-region sync (region {{ region }})
+After=network-online.target fips-cdn-proxy.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+# flock -n: if the previous run is still going, skip this tick entirely rather
+# than stacking concurrent full-inventory fetches (GAP-6).
+ExecStart=/usr/bin/flock -n {{ state_dir }}/sync.lock \
+  /usr/bin/python3 {{ install_dir }}/sync-regions.py \
+    --self http://127.0.0.1:{{ proxy_port }} \
+    {% for p in peers %}--peer {{ p }} {% endfor %} \
+    --timeout 20
+TimeoutStartSec=300
+StandardOutput=append:{{ log_dir }}/sync.log
+StandardError=append:{{ log_dir }}/sync.log

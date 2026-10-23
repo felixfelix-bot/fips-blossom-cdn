@@ -10,3 +10,5 @@
 - 2026-10-23 scripts/sync-regions.py + 11 tests green (real HTTP) → committed
 - 2026-10-23 scripts/cdn-proxy.py (/blossom/, /inventory, /sync-now, /health) + 10 tests green
    - BUG FOUND+FIXED: recorded sha256 of response body (empty) instead of request bytes
+- 2026-10-23 ansible role complete (tasks, templates, handlers, playbook, inventory); --syntax-check green
+   - BUG FOUND+FIXED: missing roles_path in ansible.cfg → role not found

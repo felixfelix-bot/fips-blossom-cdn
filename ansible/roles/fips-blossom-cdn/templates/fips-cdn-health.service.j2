@@ -1,0 +1,10 @@
+[Unit]
+Description=Blossom CDN health check (region {{ region }})
+After=fips.service
+
+[Service]
+Type=oneshot
+Environment=REGION={{ region }}
+Environment=PROXY_PORT={{ proxy_port }}
+ExecStart={{ install_dir }}/health-check.sh
+StandardOutput=append:{{ log_dir }}/health.log

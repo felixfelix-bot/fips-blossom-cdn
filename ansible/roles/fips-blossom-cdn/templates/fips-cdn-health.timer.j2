@@ -1,0 +1,11 @@
+[Unit]
+Description=Blossom CDN health check every 60s
+
+[Timer]
+OnBootSec=60
+OnUnitActiveSec=60
+AccuracySec=5
+Unit=fips-cdn-health.service
+
+[Install]
+WantedBy=timers.target

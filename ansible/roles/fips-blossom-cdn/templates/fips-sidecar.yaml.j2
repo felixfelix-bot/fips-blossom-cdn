@@ -1,0 +1,31 @@
+# Shared-identity sidecar config — EXPERIMENTAL (docs/GAP-ANALYSIS.md GAP-1).
+# Only rendered when cdn_identity_file is set. The verdict of E2E-TEST-PLAN
+# Phase 3 decides whether this file is ever deployed to production.
+#
+# The nsec is NOT in this file: it is delivered by systemd LoadCredential and
+# read from $CREDENTIALS_DIRECTORY by the entrypoint. Nothing here is a secret.
+node:
+  identity:
+    nsec_file: "${CREDENTIALS_DIRECTORY}/cdn-nsec"
+  discovery:
+    nostr:
+      enabled: false       # a duplicate identity must not advertise itself
+      policy: configured_only
+      app: "fips-overlay-v1"
+      advertise: false
+
+tun:
+  enabled: false           # the sidecar serves sidecar-local apps only
+
+dns:
+  enabled: false
+
+transports:
+  udp:
+    bind_addr: "127.0.0.1:22121"
+    advertise_on_nostr: false
+  tcp:
+    bind_addr: "127.0.0.1:18443"
+    advertise_on_nostr: false
+
+peers: []

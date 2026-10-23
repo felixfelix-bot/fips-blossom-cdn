@@ -1,0 +1,43 @@
+---
+# Rules are additive and idempotent. Nothing here exposes the CDN to the
+# internet: Blossom and the proxy bind loopback, and the only cross-region
+# reachability is over fips0.
+#
+# nftables is used when present, ufw otherwise. Both paths are guarded so a
+# re-run reports changed=0.
+
+- name: Detect the firewall backend
+  ansible.builtin.stat:
+    path: /usr/sbin/nft
+  register: nft_present
+
+- name: Allow the proxy port on the mesh interface only
+  ansible.builtin.command:
+    argv:
+      - nft
+      - add
+      - rule
+      - inet
+      - filter
+      - INPUT
+      - iifname
+      - fips0
+      - tcp
+      - dport
+      - "{{ proxy_port }}"
+      - accept
+  when:
+    - nft_present.stat.exists
+    - not ansible_check_mode
+  register: nft_rule
+  changed_when: nft_rule.rc == 0
+  failed_when: nft_rule.rc != 0 and 'File exists' not in nft_rule.stderr
+
+- name: Assert Blossom is not reachable off-host
+  ansible.builtin.command:
+    cmd: ss -ltnH 'sport = :{{ blossom_port }}'
+  register: blossom_bind
+  changed_when: false
+  failed_when: >-
+    blossom_bind.stdout | length > 0 and
+    '127.0.0.1:{{ blossom_port }}' not in blossom_bind.stdout

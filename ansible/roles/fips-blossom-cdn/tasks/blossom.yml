@@ -1,0 +1,54 @@
+---
+# Blossom server, loopback-only. Content-addressed (sha256), so re-uploading
+# identical bytes is a natural no-op — which is what makes the upload-only
+# replication model idempotent (GAP-5).
+#
+# We use the upstream reference image by digest-pinnable tag. The data dir is a
+# host bind mount, NOT a container layer, so it survives container replacement
+# and reboot (GAP-7).
+
+- name: Create the blob store directory
+  ansible.builtin.file:
+    path: "{{ state_dir }}/blossom"
+    state: directory
+    owner: root
+    group: root
+    mode: "0750"
+
+- name: Check for an existing blossom container
+  ansible.builtin.command:
+    cmd: docker inspect -f '{{ '{{' }}.State.Running{{ '}}' }}' blossom-{{ region }}
+  register: blossom_running
+  changed_when: false
+  failed_when: false
+
+- name: Run the Blossom server
+  ansible.builtin.command:
+    argv:
+      - docker
+      - run
+      - -d
+      - --name
+      - "blossom-{{ region }}"
+      - --restart
+      - unless-stopped
+      # Loopback-only: the CDN port is never exposed publicly. Reachability is
+      # over fips0 via the proxy, matching the spec's local-blossom model.
+      - -p
+      - "127.0.0.1:{{ blossom_port }}:3000"
+      - -v
+      - "{{ state_dir }}/blossom:/data"
+      - "{{ blossom_image }}"
+  when: blossom_running.rc != 0
+  changed_when: blossom_running.rc != 0
+
+- name: Wait for Blossom to answer
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ blossom_port }}/"
+    status_code: [200, 404, 400]
+    timeout: 5
+  register: blossom_wait
+  until: blossom_wait.status in [200, 404, 400]
+  retries: 20
+  delay: 2
+  changed_when: false

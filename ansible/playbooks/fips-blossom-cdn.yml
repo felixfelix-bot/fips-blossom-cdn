@@ -1,0 +1,14 @@
+---
+# Deploy one or more CDN regions.
+#
+#   ansible-playbook -i inventory/hosts.yml playbooks/fips-blossom-cdn.yml \
+#     --limit region_us --check          # always dry-run first
+#
+# Idempotence gate (docs/E2E-TEST-PLAN.md Phase 5): run twice, expect
+# changed=0 on the second pass.
+- name: Deploy Blossom CDN regions over FIPS
+  hosts: all
+  become: true
+  gather_facts: true
+  roles:
+    - fips-blossom-cdn

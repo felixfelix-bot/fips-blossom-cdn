@@ -1,0 +1,28 @@
+[Unit]
+Description=Blossom CDN HTTP proxy (region {{ region }})
+After=network-online.target fips.service
+Wants=network-online.target
+Requires=fips.service
+
+[Service]
+Type=simple
+Environment=REGION={{ region }}
+ExecStart=/usr/bin/python3 {{ install_dir }}/cdn-proxy.py \
+  --listen 0.0.0.0:{{ proxy_port }} \
+  --blossom http://127.0.0.1:{{ blossom_port }} \
+  --db {{ state_dir }}/inventory.db \
+  --sync-cmd /usr/bin/flock -n {{ state_dir }}/sync.lock \
+             /usr/bin/python3 {{ install_dir }}/sync-regions.py \
+             --self http://127.0.0.1:{{ proxy_port }} \
+             {% for p in peers %}--peer {{ p }} {% endfor %}
+Restart=always
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ReadWritePaths={{ state_dir }} {{ log_dir }}
+StandardOutput=append:{{ log_dir }}/proxy.log
+StandardError=append:{{ log_dir }}/proxy.log
+
+[Install]
+WantedBy=multi-user.target

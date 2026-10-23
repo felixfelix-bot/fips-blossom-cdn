@@ -1,0 +1,47 @@
+---
+# Health checks target the REGIONAL identity, never the shared one (GAP-4):
+# the shared-identity plane is an experiment, and alerting on it would flap
+# while the actual service is fine.
+- name: Install the health check script
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../../scripts/health-check.sh"
+    dest: "{{ install_dir }}/health-check.sh"
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Render the health check unit
+  ansible.builtin.template:
+    src: fips-cdn-health.service.j2
+    dest: /etc/systemd/system/fips-cdn-health.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Reload systemd
+
+- name: Render the health check timer
+  ansible.builtin.template:
+    src: fips-cdn-health.timer.j2
+    dest: /etc/systemd/system/fips-cdn-health.timer
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Reload systemd
+
+- name: Enable and start the health timer
+  ansible.builtin.systemd:
+    name: fips-cdn-health.timer
+    enabled: true
+    state: started
+    daemon_reload: true
+
+- name: Run the health check once now (evidence, not self-report)
+  ansible.builtin.command:
+    cmd: "{{ install_dir }}/health-check.sh"
+  register: health_now
+  changed_when: false
+  failed_when: false
+
+- name: Report health
+  ansible.builtin.debug:
+    msg: "{{ health_now.stdout_lines | default([]) }}"

@@ -1,0 +1,13 @@
+[Unit]
+Description=Run the Blossom CDN sync every {{ sync_interval }}s
+
+[Timer]
+OnBootSec=30
+OnUnitActiveSec={{ sync_interval }}
+AccuracySec=2
+# Do not fire a burst of catch-up runs after a long outage; one run converges.
+Persistent=false
+Unit=fips-cdn-sync.service
+
+[Install]
+WantedBy=timers.target

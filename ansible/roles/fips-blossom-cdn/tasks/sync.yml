@@ -1,0 +1,28 @@
+---
+# The 60s sync job. The unit holds an flock so a slow run can never overlap the
+# next tick (GAP-6): without it, a degraded peer causes accumulating concurrent
+# runs that each fetch the full inventory.
+- name: Render the sync service
+  ansible.builtin.template:
+    src: fips-cdn-sync.service.j2
+    dest: /etc/systemd/system/fips-cdn-sync.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Reload systemd
+
+- name: Render the sync timer
+  ansible.builtin.template:
+    src: fips-cdn-sync.timer.j2
+    dest: /etc/systemd/system/fips-cdn-sync.timer
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Reload systemd
+
+- name: Enable and start the sync timer
+  ansible.builtin.systemd:
+    name: fips-cdn-sync.timer
+    enabled: true
+    state: started
+    daemon_reload: true

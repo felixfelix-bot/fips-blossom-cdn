@@ -1,0 +1,20 @@
+[Unit]
+Description=FIPS shared-identity CDN sidecar (EXPERIMENTAL, region {{ region }})
+After=fips.service
+Requires=fips.service
+
+[Service]
+Type=simple
+# The shared CDN identity is delivered as a systemd credential — never a task
+# argument, never in the unit file, never in git.
+LoadCredential=cdn-nsec:{{ state_dir }}/cdn-nsec
+ExecStart=/usr/local/bin/fips --config /etc/fips/fips-sidecar.yaml
+Restart=on-failure
+RestartSec=10
+# no_log equivalent: journald captures stdout, so the daemon must never print
+# the key; FIPS does not log identity material.
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

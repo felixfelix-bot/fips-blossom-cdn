@@ -1,0 +1,32 @@
+---
+- name: Install the proxy script
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../../scripts/cdn-proxy.py"
+    dest: "{{ install_dir }}/cdn-proxy.py"
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Install the sync script
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../../scripts/sync-regions.py"
+    dest: "{{ install_dir }}/sync-regions.py"
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Render the proxy systemd unit
+  ansible.builtin.template:
+    src: cdn-proxy.service.j2
+    dest: /etc/systemd/system/fips-cdn-proxy.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Reload systemd
+
+- name: Enable and start the proxy
+  ansible.builtin.systemd:
+    name: fips-cdn-proxy
+    enabled: true
+    state: started
+    daemon_reload: true
