@@ -10,7 +10,7 @@ different costs, and the received spec addresses mostly the *cheap* ones.
 | **L1** | Origin storage (where the bytes live) | Blossom server per region, `127.0.0.1:3000` | ✅ Solved. Blossom is content-addressed (sha256), dedups, has a federated-ish HTTP API. |
 | **L2** | Replication (getting bytes to the other regions) | `/inventory` + `/sync-now` + 60 s systemd job, upload-only | ⚠️ **Shape is right, mechanism has a gap** — Blossom `/list` is per-pubkey, see GAP-2. |
 | **L3** | Addressing (how a viewer names the content) | Implicit: FIPS `npub` *is* the address | ✅ FIPS identity = IPv6 address is genuinely elegant and already solved. |
-| **L4** | **Delivery selection (routing a viewer to the *nearest* replica)** | **The shared-identity sidecars** | ❌ **UNVERIFIED, and it is the entire CDN premise.** See §3. |
+| **L4** | **Delivery selection (routing a viewer to the *nearest* replica)** | **The shared-identity sidecars** | ❌ **FALSIFIED from source — the mechanism cannot work.** See §3. Must become an application-layer lookup. |
 | **L5** | Edge fan-out (many viewers, one origin) | Not addressed | ❌ FIPS has one path per node pair; N viewers = N unicast flows down the same path. Placement is the only lever. |
 
 ## 2. What "CDN" means here
@@ -39,7 +39,7 @@ Below those N, four replicas are **pure overhead** — you pay 4× storage and
 argument against building it; it is an argument for the test plan measuring
 where the knee actually is on *our* hardware before the design assumes it.
 
-## 3. The shared-identity sidecar — the load-bearing claim
+## 3. The shared-identity sidecar — the load-bearing claim, now falsified
 
 The spec's own note is admirably honest:
 
@@ -64,29 +64,41 @@ and nobody should promise geo-routing on it.
 So clone the nsec → identical `node_addr` → identical `fd…` overlay address.
 Two hosts **can be configured** to claim the same address. That much is certain.
 
-### What is unknown
+### What actually happens: the startup-epoch restart rule (FALSIFIED)
 
-Whether the FIPS *data plane* does something sensible with that is a different
-question, and it is not answered by the docs. As of this writing:
+The data plane does **not** treat two nodes with one identity as two endpoints.
+It treats them as **one peer that keeps restarting**, and the mechanism is
+explicit in source:
 
-- **No mention** of shared identity, anycast, identity cloning, or collision
-  anywhere in `docs/design/` or `src/` (grep for `anycast`, `shared identity`,
-  `duplicate identity`, `identity collision` → nothing load-bearing).
-- FIPS routes on **tree coordinates with greedy forwarding**, and elects a root
-  by lowest node address. Two nodes claiming the same address interact with both
-  of those mechanisms.
-- Peer/session bookkeeping is keyed by `NodeAddr` in several places, and the
-  tree keeps **one active link per peer** — two nodes sharing one identity are,
-  to those structures, indistinguishable.
+1. Every node draws a **random 8-byte startup epoch per process start**
+   (`src/node/context.rs:30` — *"Random epoch generated at startup for peer
+   restart detection"*; drawn at `src/node/mod.rs:999-1000`).
+2. The epoch rides in the handshake as `remote_epoch`
+   (`core/src/proto/fmp/core.rs:204`).
+3. A known identity presenting a *different* epoch is classified as a **peer
+   restart**: `core/src/proto/fmp/core.rs:496-497` maps
+   `(Some(existing), Some(new)) if existing != new` →
+   `InboundDecision::RestartThenPromote { peer }`.
+4. The node then **destroys the existing session**
+   (`src/node/handlers/handshake.rs:2393-2425`): `this_wins` is forced true by
+   `remote_epoch_changed`, `close_session(&peer_node_addr)` runs, and it logs
+   *"Peer restart detected during promotion, replacing stale active peer"*.
 
-**Verdict: UNKNOWN-WITHOUT-EXPERIMENT.** Neither "it works" nor "it breaks" is
-supportable from the source alone. The failure modes to watch for are concrete
-and cheap to observe — unstable root/parent in `fipsctl show tree`, sessions that
-flap between two different underlays, or one region's sidecar silently never
-receiving traffic. See `E2E-TEST-PLAN.md` Phase 3.
+Two shared-identity nodes draw different epochs, so **each concludes the other
+restarted and tears down its session — repeatedly.** There is no code path that
+could pick "nearest", because every structure holds exactly **one slot per
+identity**: `existing_peer_epoch` is tracked per peer identity
+(`src/node/mod.rs:807`), sessions are keyed by `NodeAddr`
+(`close_session(&peer_node_addr)`), and the tree keeps one active link per peer.
+The cross-connection tie-breaker degenerates on equal addresses — it compares
+`our_node_addr < their_node_addr` (`fmp/core.rs:45`), which is false on *both*
+sides when the addresses are equal, so it is not a tie-breaker at all.
 
-> Do not re-derive this from first principles in a design review. Run the
-> experiment; it costs one sidecar and one host.
+**Consequence: no anycast, and the failure is not benign** — the shared sidecar
+degrades the region's mesh stability. Do not deploy it.
+
+Full verdict + predicted log lines: `evidence/02-shared-identity-verdict.md`.
+Source-level, not yet observed live — Phase 3 confirms it in ~30 minutes.
 
 ## 4. Why the design is nevertheless well-formed
 

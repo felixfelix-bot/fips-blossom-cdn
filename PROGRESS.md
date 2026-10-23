@@ -12,3 +12,10 @@
    - BUG FOUND+FIXED: recorded sha256 of response body (empty) instead of request bytes
 - 2026-10-23 ansible role complete (tasks, templates, handlers, playbook, inventory); --syntax-check green
    - BUG FOUND+FIXED: missing roles_path in ansible.cfg → role not found
+- 2026-10-23 GAP-1 FALSIFIED from source (startup-epoch restart rule) → evidence/02
+- 2026-10-23 Blossom HTTP surface verified (BUD-12 /list per-pubkey; 1-week default prune; mirror SSRF) → evidence/01
+- 2026-10-23 fleet venue probed: 3 countries / 2 real sites; mesh app-port data plane BROKEN → evidence/00
+- 2026-10-23 GAP-2 reclassified blocker→config; GAP-5 upgraded to correctness bug; GAP-11/12 added
+- 2026-10-23 test-no-secrets allowlist bug fixed (dummy key), negative control verified
+- 2026-10-23 tests/run-all.sh + Makefile; 31 tests green
+- REMAINING: Phase 1.5 mesh data-plane gate; Phase 3 live confirmation; fleet execution

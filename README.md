@@ -50,21 +50,29 @@ This repo is that deliverable.
 
 ## Headline findings
 
-1. **The shared-identity sidecar is the load-bearing claim and it is
-   unverified.** It is the only part of the design that could make this a
-   *CDN* rather than *four independent Blossom servers*. FIPS's own docs never
-   mention shared identity, anycast, or key cloning. It must be tested before
-   anything is built on it.
+1. **🔴 The shared-identity sidecar does not work — FALSIFIED from source.**
+   FIPS draws a random *startup epoch* per process (`src/node/context.rs:30`) and
+   treats a known identity presenting a different epoch as **a peer that
+   restarted** (`core/src/proto/fmp/core.rs:496` → `RestartThenPromote`, then
+   `close_session(...)` at `src/node/handlers/handshake.rs:2393`). Two
+   shared-identity nodes therefore tear down each other's sessions in a loop —
+   they are **one flapping peer**, not one anycast endpoint. Deploying the shared
+   sidecar actively harms mesh stability. Full verdict:
+   `evidence/02-shared-identity-verdict.md`. **This removes the CDN premise; what
+   survives is four independently-replicated Blossom servers, which is useful but
+   is not a CDN.**
 2. **Blossom's `/list` is per-pubkey, not global.** A naive "compare inventories
    across regions" job cannot enumerate a peer's whole store. Replication must
    carry the blob *contract* (sha256 → uploader pubkey), not just hashes.
 3. **"Upload-only, never delete" is correct and cheap** — it matches Blossom's
    content-addressed dedup semantics and avoids the one operation Blossom does
    not federate.
-4. **There is no proxying media layer in the spec.** `/blossom/` + `/inventory`
-   + `/sync-now` describe *replication*, not *delivery selection*. Nothing in
-   the design picks a nearer replica for a viewer. That is the difference
-   between "4 replicas" and "a CDN" — see `docs/ARCHITECTURE.md` §L4.
+4. **There is no delivery-selection layer in the spec, and the network cannot
+   provide one either** (GAP-1 falsified). `/blossom/` + `/inventory` +
+   `/sync-now` describe *replication*. Nothing picks a nearer replica for a
+   viewer, and — unlike the design's assumption — FIPS cannot do it implicitly.
+   See `docs/ARCHITECTURE.md` §L4; a real L4 must be an application-level lookup
+   over the unique regional identities.
 5. **FIPS has one path per node pair and no fan-out**, so per-region placement is
    the entire value proposition. Replication bandwidth is `S/(P/8)` — the
    measured LAN ceiling bounds how fast a region can be seeded.
@@ -72,10 +80,21 @@ This repo is that deliverable.
 ## Status
 
 - [x] Repo scaffold, spec captured
-- [x] Gap analysis (FIPS source-read + Blossom spec-read + fleet probe)
+- [x] Gap analysis (12 gaps; GAP-1 falsified, GAP-2/5/12 verified from source)
 - [x] E2E test plan
-- [ ] Ansible reference role (Phases 1–2 of the plan)
-- [ ] Fleet execution + evidence
+- [x] Ansible reference role (syntax-checked; **not** executed on a host)
+- [x] Evidence: fleet venue inventory, Blossom HTTP surface, shared-identity verdict
+- [x] Working code + 31 tests green (`make test`)
+- [ ] Phase 3 live confirmation of the shared-identity verdict
+- [ ] Fleet execution (Phases 1–2, 5) — requires the mesh data-plane gap to be fixed first
+
+## Evidence
+
+| File | Contents |
+|---|---|
+| `evidence/00-venue-inventory.md` | Live fleet probe. **Max real spread: 3 countries / 2 real sites.** No UK, no Asia. |
+| `evidence/01-blossom-http-surface.md` | BUD endpoint table, `/list` scoping, dedup, prune defaults, mirror SSRF block. |
+| `evidence/02-shared-identity-verdict.md` | **The GAP-1 falsification**, with the startup-epoch mechanism and predicted symptoms. |
 
 ## License / privacy
 
