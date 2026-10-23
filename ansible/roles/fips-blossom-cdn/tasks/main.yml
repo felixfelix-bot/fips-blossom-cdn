@@ -1,0 +1,60 @@
+---
+- name: Assert required inputs
+  ansible.builtin.assert:
+    that:
+      - region is defined
+      - region | length > 0
+      - fips_version is defined
+    fail_msg: "region is required (us/eu/asia/uk) and fips_version must be pinned"
+    quiet: true
+
+- name: Create directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  loop:
+    - "{{ install_dir }}"
+    - "{{ config_dir }}"
+    - "{{ state_dir }}"
+    - "{{ log_dir }}"
+
+# ---------------------------------------------------------------- FIPS daemon
+- name: Install FIPS {{ fips_version }} from the upstream .deb
+  ansible.builtin.include_tasks: fips-install.yml
+
+- name: Render the regional FIPS config
+  ansible.builtin.include_tasks: fips-config.yml
+
+# ------------------------------------------------------------------- Blossom
+- name: Deploy Blossom
+  ansible.builtin.include_tasks: blossom.yml
+
+# --------------------------------------------------------------------- Proxy
+- name: Deploy the HTTP proxy
+  ansible.builtin.include_tasks: proxy.yml
+
+# ---------------------------------------------------------------------- Sync
+- name: Deploy the replication timer
+  ansible.builtin.include_tasks: sync.yml
+
+# ----------------------------------------------------------------- Firewall
+- name: Apply firewall rules
+  ansible.builtin.include_tasks: firewall.yml
+
+# -------------------------------------------------------------------- Health
+- name: Deploy health checks
+  ansible.builtin.include_tasks: health.yml
+
+- name: Read back the post-state (evidence, not self-report)
+  ansible.builtin.command:
+    cmd: systemctl is-active fips fips-cdn-proxy fips-cdn-sync.timer
+  register: fips_cdn_post_state
+  changed_when: false
+  failed_when: false
+
+- name: Report the observed post-state
+  ansible.builtin.debug:
+    msg: "{{ fips_cdn_post_state.stdout_lines | default(['<no output>']) }}"

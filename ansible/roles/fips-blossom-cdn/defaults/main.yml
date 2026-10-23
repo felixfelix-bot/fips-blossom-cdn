@@ -1,0 +1,30 @@
+---
+# Pin the FIPS version. Upstream master is 0.6.0-dev (244 commits past v0.5.3)
+# and mid-refactor; testing against it produces unreproducible results.
+fips_version: "0.5.3"
+
+# Region slug — REQUIRED, no safe default.
+# region: us
+
+blossom_port: 3000
+proxy_port: 3200
+sync_interval: 60
+
+# Peer proxy base URLs, reachable over the mesh. Empty by default: a
+# single-region deploy must not fail for lack of peers.
+peers: []
+
+# Public IP. Required only if transports.tcp.advertise_on_nostr is true;
+# without it FIPS logs a warning every second and the TCP endpoint is invisible.
+public_ip: ""
+
+# Path (on the controller) to the shared CDN identity secret. Empty means
+# "do not deploy the shared-identity sidecar" — which is the correct default
+# until E2E-TEST-PLAN Phase 3 returns a verdict.
+cdn_identity_file: ""
+
+fips_group: fips
+install_dir: /opt/fips-blossom-cdn
+config_dir: /etc/fips
+state_dir: /var/lib/fips-blossom-cdn
+log_dir: /var/log/fips-blossom-cdn

@@ -1,0 +1,35 @@
+---
+# The regional host node uses its OWN persistent identity — the reliable plane
+# (docs/GAP-ANALYSIS.md GAP-4). We deliberately do not inject an nsec here:
+# `persistent: true` lets the daemon generate and persist its key in the config
+# directory, which satisfies "stable across reboots" (GAP-7) without any secret
+# ever passing through Ansible.
+#
+# NOTE: transports/tun/dns are at YAML ROOT level. Nesting them under `node:`
+# yields `transports: 0` with NO error — a silent total failure.
+
+- name: Render the regional FIPS config
+  ansible.builtin.template:
+    src: fips-regional.yaml.j2
+    dest: "{{ config_dir }}/fips.yaml"
+    owner: root
+    group: root
+    mode: "0600"
+    backup: true
+  notify: Restart fips
+
+- name: Assert the rendered config has exactly one 'peers:' key
+  ansible.builtin.command:
+    cmd: grep -c '^peers:' {{ config_dir }}/fips.yaml
+  register: peers_count
+  changed_when: false
+  failed_when: peers_count.stdout | int != 1
+  # A duplicate peers: key makes FIPS crash-loop every 5s with
+  # 'duplicate field peers'. Catch it at deploy time, not in a restart loop.
+
+- name: Assert transports are at root level (not nested under node:)
+  ansible.builtin.command:
+    cmd: grep -cE '^  transports:' {{ config_dir }}/fips.yaml
+  register: nested_transports
+  changed_when: false
+  failed_when: nested_transports.stdout | int != 0

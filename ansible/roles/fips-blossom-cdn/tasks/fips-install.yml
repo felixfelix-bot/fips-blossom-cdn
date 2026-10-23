@@ -1,0 +1,48 @@
+---
+# Idempotent FIPS install. `state: present` on dpkg is NOT idempotent-safe for
+# upgrades (it never upgrades), so we check the installed version and only act
+# when it differs. This is the exact defect class the fleet hit with a
+# 'state: present' package task reporting ok/changed=0 while doing nothing.
+
+- name: Detect the installed FIPS version
+  ansible.builtin.command:
+    cmd: dpkg-query -W -f='${Version}' fips
+  register: fips_installed
+  changed_when: false
+  failed_when: false
+
+- name: Compute the target FIPS version
+  ansible.builtin.set_fact:
+    fips_present: "{{ fips_installed.rc == 0 }}"
+    fips_needs_install: >-
+      {{ fips_installed.rc != 0 or
+         (fips_installed.stdout | default('') | regex_replace('^[^0-9]*', '')
+          | regex_replace('-.*$', '')) != fips_version }}
+
+- name: Install or upgrade FIPS to the pinned version
+  when: fips_needs_install | bool
+  block:
+    - name: Download the pinned FIPS .deb
+      ansible.builtin.get_url:
+        url: >-
+          https://github.com/jmcorgan/fips/releases/download/v{{ fips_version }}/fips_{{ fips_version }}_{{ 'arm64' if ansible_architecture == 'aarch64' else 'amd64' }}.deb
+        dest: "/tmp/fips_{{ fips_version }}.deb"
+        mode: "0644"
+
+    - name: Install the pinned FIPS .deb
+      ansible.builtin.apt:
+        deb: "/tmp/fips_{{ fips_version }}.deb"
+        state: present
+      notify: Restart fips
+
+- name: Ensure the fips group exists
+  ansible.builtin.group:
+    name: "{{ fips_group }}"
+    state: present
+
+- name: Enable the FIPS daemon
+  ansible.builtin.systemd:
+    name: fips
+    enabled: true
+    state: started
+    daemon_reload: true
