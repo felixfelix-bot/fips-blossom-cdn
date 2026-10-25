@@ -5,8 +5,8 @@
 
 # Evidence 07 — Fleet execution attempt: Phase 1.5 gate + venue capability
 
-**Probe:** 2026-10-25, run from **x280** (DE, Fenix/FIPS 0.5.3, inside the live fleet mesh).
-Read-only except a **throwaway test listener** on VPS2 `:31996-31999`, removed after.
+**Probe:** 2026-10-25, run from **node-a** (DE, Fenix/FIPS 0.5.3, inside the live fleet mesh).
+Read-only except a **throwaway test listener** on vps-b `:31996-31999`, removed after.
 
 ## A. Phase 1.5 MESH DATA-PLANE GATE — **FAIL** (reproduced, root-caused)
 
@@ -17,17 +17,17 @@ distinct hosts to a test listener on a third host's `fips0:<port>` succeeds.*
 
 | Step | Command | Result |
 |---|---|---|
-| Reachability | `ping6 -c3 fdfd:c0e5:3717:6cb1:bb60:de97:987e:7149` (x280→VPS2) | **3/3 received, 209 ms avg** — mesh carries ICMPv6 fine |
-| Route | `ip -6 route get <VPS2 fips0>` | `from :: dev fips0 src fd36:...bb0` ✅ correct |
-| Listener | `ss -ltnH` on VPS2 | `LISTEN 0 8 *:31996 *:*` ✅ bound |
-| **TCP connect** | x280 → `[VPS2 fips0]:31996` (4 attempts incl. 12 s timeout) | **❌ TIMEOUT** — not refused, not refused-by-route: **timeout** |
-| Self-connect | VPS2 → its **own** fips0 addr `:31996` | `SELF_CONNECT_OK` ✅ |
-| Packets | `tcpdump -i fips0` on VPS2 during the send | **SYN arrives** (`fd36:...bb0.33138 > fdfd:...7149.31996: Flags [S]`), retransmitted 3× — **no SYN-ACK ever emitted** |
+| Reachability | `ping6 -c3 fdfd:c0e5:3717:6cb1:bb60:de97:987e:7149` (node-a→vps-b) | **3/3 received, 209 ms avg** — mesh carries ICMPv6 fine |
+| Route | `ip -6 route get <vps-b fips0>` | `from :: dev fips0 src fd36:...bb0` ✅ correct |
+| Listener | `ss -ltnH` on vps-b | `LISTEN 0 8 *:31996 *:*` ✅ bound |
+| **TCP connect** | node-a → `[vps-b fips0]:31996` (4 attempts incl. 12 s timeout) | **❌ TIMEOUT** — not refused, not refused-by-route: **timeout** |
+| Self-connect | vps-b → its **own** fips0 addr `:31996` | `SELF_CONNECT_OK` ✅ |
+| Packets | `tcpdump -i fips0` on vps-b during the send | **SYN arrives** (`fd36:...bb0.33138 > fdfd:...7149.31996: Flags [S]`), retransmitted 3× — **no SYN-ACK ever emitted** |
 | Firewall | `ip6tables -S ufw6-user-input` | `-A ufw6-user-input -i fips0 -j ACCEPT` ✅ present — **firewall is NOT the cause** |
 
 ### Root cause
 
-**The SYNs arrive on VPS2's `fips0` and are not answered.** The packet reaches
+**The SYNs arrive on vps-b's `fips0` and are not answered.** The packet reaches
 the FIPS layer (tcpdump on `fips0` sees it) but never reaches the listening
 socket nor produces a reply. It is *not*:
 - a firewall drop (`-i fips0 -j ACCEPT` is before the policy DROP, and the SYN is
@@ -47,8 +47,8 @@ data-plane phase can run.
 ### Note on the prior probe
 
 `evidence/00 §D` recorded `:8443` as *connection refused*. In this run `:8443`
-reported **OPEN in VPS2's own loopback self-test** while still timing out from
-x280. Reconcile: the "refused" reading in §D was taken via a **different
+reported **OPEN in vps-b's own loopback self-test** while still timing out from
+node-a. Reconcile: the "refused" reading in §D was taken via a **different
 namespace/path** (`fipsctl`-adjacent), whereas the loopback self-test answers
 from `127.0.0.1`. The consistent, reproducible signal is: **timeouts from a
 remote node, success locally.**
@@ -57,22 +57,22 @@ remote node, success locally.**
 
 | Venue | Available? | Basis |
 |---|---|---|
-| `local-two-daemon` | **❌ NOT on x280 as-is** | `unshare -rn` → `Operation not permitted` (uid_map); no Docker (podman 4.9.3 **rootless**). Netns creation for two FIPS daemons is not available unprivileged. `sudo -n` works and `ip link add type dummy` succeeds ⇒ **with sudo**, netns is feasible. |
-| `lan-two-host` | **✅ available** | x280 and dq05 are both on `192.168.2.x` (same LAN, same public IP 198.51.100.10). dq05 also runs FIPS 0.5.3. |
-| `fleet-four-host` | **✅ 4 hosts up, ✅ mesh connected** | x280 (DE), dq05 (DE, same LAN), VPS1 (US), VPS2 (US) — full mesh, 3 peers each, all `connected`. Only **2 real sites** (see §C). |
+| `local-two-daemon` | **❌ NOT on node-a as-is** | `unshare -rn` → `Operation not permitted` (uid_map); no Docker (podman 4.9.3 **rootless**). Netns creation for two FIPS daemons is not available unprivileged. `sudo -n` works and `ip link add type dummy` succeeds ⇒ **with sudo**, netns is feasible. |
+| `lan-two-host` | **✅ available** | node-a and node-b are both on `192.0.2.0/24` (same LAN, same public IP 198.51.100.10). node-b also runs FIPS 0.5.3. |
+| `fleet-four-host` | **✅ 4 hosts up, ✅ mesh connected** | node-a (DE), node-b (DE, same LAN), vps-a (US), vps-b (US) — full mesh, 3 peers each, all `connected`. Only **2 real sites** (see §C). |
 | `fleet-four-region` | **❌ NOT supportable** | 3 countries / 2 sites / no UK / no Asia (unchanged from `evidence/00 §B`). |
 
 ## C. Version drift — unchanged, and still a confounder
 
 | Host | FIPS | Country | Role |
 |---|---|---|---|
-| x280 (this machine) | 0.5.3 | DE | fleet member, has podman, 11 G free |
-| dq05 | 0.5.3 | DE (same LAN as x280) | `:3000` **BOUND** (bun) |
-| VPS1 | 0.5.1 | US Houston | Blossom on `:3001` |
-| VPS2 | 0.5.1 | US Houston | `:3000` **BOUND** (node) |
+| node-a (this machine) | 0.5.3 | DE | fleet member, has podman, 11 G free |
+| node-b | 0.5.3 | DE (same LAN as node-a) | `:3000` **BOUND** (bun) |
+| vps-a | 0.5.1 | US Houston | Blossom on `:3001` |
+| vps-b | 0.5.1 | US Houston | `:3000` **BOUND** (node) |
 
-**Blocker for Phases 2/5 on the real fleet: `:3000` is already occupied on dq05
-and VPS2**, and VPS1 has Blossom on `:3001`. The role's default `:3000` cannot be
+**Blocker for Phases 2/5 on the real fleet: `:3000` is already occupied on node-b
+and vps-b**, and vps-a has Blossom on `:3001`. The role's default `:3000` cannot be
 used as-is on 3 of 4 hosts.
 
 ## E. Side-discovery: `fips-live-smoke.sh` reports a FALSE FAIL
@@ -115,7 +115,7 @@ it either way.
 
 **Neither Docker nor MAAS is the right tool, and this was measured, not assumed.**
 
-- **Docker adds nothing.** Docker is not installed on x280 (podman 4.9.3
+- **Docker adds nothing.** Docker is not installed on node-a (podman 4.9.3
   **rootless** only). FIPS needs a real host netns plus `/dev/net/tun`,
   `NET_ADMIN` and `--network host`; **rootless podman cannot grant that**, so
   containerising buys no capability that a plain netns does not already provide,
@@ -139,7 +139,7 @@ it either way.
 | 0 local mechanics | netns two-daemon | ✅ runnable now |
 | 1.5 data-plane gate | live fleet | ✅ **run — FAILS, root-caused (§A)** |
 | 1 single region | netns + 1 host | ✅ runnable (pick a free port; see §C) |
-| 2 replication | x280 + dq05 (one LAN) | ⚠️ same-LAN only; `:3000` occupied |
+| 2 replication | node-a + node-b (one LAN) | ⚠️ same-LAN only; `:3000` occupied |
 | 3 shared-identity | 2 hosts, ~30 min | ✅ **highest-value remaining test** |
 | 4 throughput | 3–4 hosts | ⚠️ weak — 2 real sites (§C) |
 | 5 four-region | — | ❌ **not supportable** (3 countries, no UK/Asia) |
@@ -147,10 +147,10 @@ it either way.
 
 ## G. Probe hygiene
 
-All probe state was removed after measurement: the throwaway listeners on VPS2
+All probe state was removed after measurement: the throwaway listeners on vps-b
 (`:31996–:31999`), their scripts and capture files were deleted and re-verified
 absent; the smoke netns (`fips-smoke-a/_b`) were removed and the leftover daemon
-processes killed. The **host fleet daemon on x280 was never touched** and is
+processes killed. The **host fleet daemon on node-a was never touched** and is
 still `active` (`fipsctl show status` OK). No configuration on any fleet node was
 modified.
 
@@ -163,9 +163,9 @@ inference in §E about *why* `NPUB_B` is stale — the mechanism was not observe
 being fixed, only isolated by a clean reproduction.
 
 
-## D. Tooling present on x280
+## D. Tooling present on node-a
 
-| Tool | Present on x280 | Note |
+| Tool | Present on node-a | Note |
 |---|---|---|
 | podman 4.9.3 | ✅ **rootless only** | `--network host` + `NET_ADMIN` needed by FIPS; rootless podman **cannot** give a true host-netns + tun, so the FIPS sidecar trap applies |
 | docker | ❌ absent | harmless — podman is CLI-compatible |
@@ -176,4 +176,4 @@ being fixed, only isolated by a clean reproduction.
 | lxc / LXD | ⚠️ snap install prompted, not initialised | |
 | MAAS | ❌ not installed | no `maas`/`maas-region`; not in snap list |
 
-Disk on x280: **11 G free (95% used)** — this bounds how many VM images fit.
+Disk on node-a: **11 G free (95% used)** — this bounds how many VM images fit.

@@ -5,7 +5,7 @@
 
 # Evidence 08 — Phase 3 shared-identity, netns venue: prediction NOT reproduced as written
 
-**Probe:** 2026-10-25, run on **x280** in network + mount namespaces. **Zero
+**Probe:** 2026-10-25, run on **node-a** in network + mount namespaces. **Zero
 fleet impact** — nothing bound a host interface, the host `fips.service` was
 untouched and remained `active` throughout, and all state was torn down.
 
@@ -106,7 +106,7 @@ than failing:
 
 | Path | Trap | Symptom observed |
 |---|---|---|
-| `/run/fips/control.sock` | netns-separated `fipsctl` still reads the **HOST** daemon | `peers: 4` on both probe nodes — the fleet's own peers (andre, dq05, cobrador, t440) |
+| `/run/fips/control.sock` | netns-separated `fipsctl` still reads the **HOST** daemon | `peers: 4` on both probe nodes — the fleet's own peers (andre, node-b, vps-c, node-c) |
 | `/etc/fips/peers.deny` | fleet ACL (`deny ALL` + 9-npub allowlist) filters the test identity | `Rejected peer by ACL ... decision=denylist match`, peers stuck at 0 |
 
 Fix: `unshare --mount --propagation private` with per-node bind mounts over

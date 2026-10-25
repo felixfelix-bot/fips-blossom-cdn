@@ -134,7 +134,7 @@ echo
 #
 #   /run/fips/control.sock  — the control socket. Without isolating it,
 #                             `fipsctl` reports the HOST fleet daemon's peers
-#                             (andre, dq05, ...), so the probe looks like it
+#                             (andre, node-b, ...), so the probe looks like it
 #                             measured something while measuring the host.
 #   /etc/fips/peers.deny    — the ACL. The fleet's real ACL is `deny ALL` plus a
 #                             strict allowlist of 9 fleet npubs, so a test

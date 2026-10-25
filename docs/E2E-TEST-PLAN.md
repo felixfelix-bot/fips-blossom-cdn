@@ -61,8 +61,8 @@ exists to prevent.**
 4 FIPS-capable hosts all already peering, but **only 3 countries and effectively
 2 real sites** (DE ×2 on one LAN/one public IP; US ×2 adjacent IPs same ASN; CH
 ×1 peer with no sshd). **No UK, no Asia.** A `fleet-four-host` venue exists; a
-*four-region* claim does not. Also note **version drift**: VPS1/VPS2 on FIPS
-**0.5.1**, x280/dq05 on **0.5.3** — a confounder to record, not to ignore.
+*four-region* claim does not. Also note **version drift**: vps-a/vps-b on FIPS
+**0.5.1**, node-a/node-b on **0.5.3** — a confounder to record, not to ignore.
 
 ---
 
@@ -132,18 +132,18 @@ last_sync: <ts>}`.
 ### Phase 1.5 — 🔴 MESH DATA-PLANE GATE (blocking) · ~1 h
 
 **Measured 2026-10-23 (`evidence/00-venue-inventory.md` §D): the mesh does not
-currently carry application traffic to all our hosts.** From x280 and dq05,
-VPS2's `:3000`, `:9001`, `:7777` **time out** and `:8443` returns *connection
-refused*, while `:22` is open and VPS2's own self-test to its own fips address
+currently carry application traffic to all our hosts.** From node-a and node-b,
+vps-b's `:3000`, `:9001`, `:7777` **time out** and `:8443` returns *connection
+refused*, while `:22` is open and vps-b's own self-test to its own fips address
 `:3000` succeeds. Only the SSH/control path is proven across all four nodes.
 
 **RE-MEASURED 2026-10-25 with root cause (`evidence/07-fleet-execution-attempt.md`
 §A) — the gate FAILS, and it is not the firewall.** A throwaway TCP listener on
-VPS2's `fips0` (`:31996–:31999`) is unreachable from x280 (timeout, 4/4 attempts)
+vps-b's `fips0` (`:31996–:31999`) is unreachable from node-a (timeout, 4/4 attempts)
 while `ping6` to the same address succeeds (3/3, 209 ms), the route is correct
-(`dev fips0`), VPS2 self-connects to its own `fips0` address fine, and
+(`dev fips0`), vps-b self-connects to its own `fips0` address fine, and
 `ip6tables -S ufw6-user-input` already carries `-i fips0 -j ACCEPT` *before* the
-policy DROP. `tcpdump -i fips0` on VPS2 **shows the SYN arriving and being
+policy DROP. `tcpdump -i fips0` on vps-b **shows the SYN arriving and being
 retransmitted with no SYN-ACK ever emitted** ⇒ the break is inside TCP-segment
 forwarding after `fips0` ingress, not routing, not firewall, not service bind.
 
@@ -153,13 +153,13 @@ order — steps 1 and 2 are now **eliminated** by the above, so start at 3:
 1. ~~`fips-firewall.service`~~ — **eliminated**: the accept rule is present and the
    SYN is already on the wire above it.
 2. ~~Service bound to `127.0.0.1` only~~ — **eliminated**: the listener binds `*`
-   and VPS2 self-connects successfully.
+   and vps-b self-connects successfully.
 3. **The live lead:** why does an inbound TCP segment on `fips0` not reach the
    socket? Check FIPS's own data-plane handling — MTU/segment handling on the
    TUN path (mesh MTU is **1203** here vs `fips0` link MTU 1280), checksum/TCP-offload
    interaction on the tun device, and whether the daemon forwards native IP flows
    only for flows it has registered. Use `tcpdump` on `fips0` on **both** sides
-   (confirmed: outbound SYN at x280, inbound SYN at VPS2, no reply) plus the
+   (confirmed: outbound SYN at node-a, inbound SYN at vps-b, no reply) plus the
    daemon's own counters (`fipsctl show native-flows`, `show routing`).
 
 **Gate:** a TCP connect from two distinct hosts to a test listener on a third
