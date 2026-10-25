@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# WARNING: EXPERIMENTAL HISTORICAL HARNESS; NOT ACCEPTANCE EVIDENCE.
+# NOT APPROVED FOR RERUN. See docs/EVIDENCE-CORRECTION.md for safety hazards
+# and withdrawn conclusions. Comments/output below preserve historical claims.
 # Phase 3 — live shared-identity confirmation (netns venue, NO fleet impact).
 #
 # ## What this tests

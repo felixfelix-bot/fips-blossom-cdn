@@ -1,3 +1,8 @@
+> **HISTORICAL / SUPERSEDED INTERPRETATION:** [Authoritative correction](../docs/EVIDENCE-CORRECTION.md) takes precedence.
+> Observations below are preserved as originally reported, not newly verified.
+> Anycast falsification, no-locality, root-cause and harness-safety claims are withdrawn
+> where identified there. Do not execute the historical probe/deployment instructions.
+
 # Gap Analysis — the received spec vs. FIPS and Blossom as they actually are
 
 Every gap is ranked by **how much it changes the build**. "Blocker" = the spec as

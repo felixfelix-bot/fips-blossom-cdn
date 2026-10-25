@@ -1,3 +1,8 @@
+> **HISTORICAL / SUPERSEDED INTERPRETATION:** [Authoritative correction](../docs/EVIDENCE-CORRECTION.md) takes precedence.
+> Observations below are preserved as originally reported, not newly verified.
+> Anycast falsification, no-locality, root-cause and harness-safety claims are withdrawn
+> where identified there. Do not execute the historical probe/deployment instructions.
+
 # Evidence 02 — Shared-identity behaviour in FIPS (the GAP-1 verdict)
 
 **Question:** can two nodes run the *same* secp256k1 identity at different network

@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# WARNING: EXPERIMENTAL HISTORICAL HARNESS; NOT ACCEPTANCE EVIDENCE.
+# NOT APPROVED FOR RERUN. See docs/EVIDENCE-CORRECTION.md for safety hazards
+# and withdrawn conclusions. Comments/output below preserve historical claims.
 # Phase 3b — THE decisive experiment: restart into an existing peering.
 #
 # ## Why this variant, and not just "two daemons, one identity"
