@@ -132,15 +132,30 @@ VPS2's `:3000`, `:9001`, `:7777` **time out** and `:8443` returns *connection
 refused*, while `:22` is open and VPS2's own self-test to its own fips address
 `:3000` succeeds. Only the SSH/control path is proven across all four nodes.
 
-**No CDN data-plane phase can be attempted until this is resolved.** Diagnose, in
-order:
+**RE-MEASURED 2026-10-25 with root cause (`evidence/07-fleet-execution-attempt.md`
+§A) — the gate FAILS, and it is not the firewall.** A throwaway TCP listener on
+VPS2's `fips0` (`:31996–:31999`) is unreachable from x280 (timeout, 4/4 attempts)
+while `ping6` to the same address succeeds (3/3, 209 ms), the route is correct
+(`dev fips0`), VPS2 self-connects to its own `fips0` address fine, and
+`ip6tables -S ufw6-user-input` already carries `-i fips0 -j ACCEPT` *before* the
+policy DROP. `tcpdump -i fips0` on VPS2 **shows the SYN arriving and being
+retransmitted with no SYN-ACK ever emitted** ⇒ the break is inside TCP-segment
+forwarding after `fips0` ingress, not routing, not firewall, not service bind.
 
-1. `fips-firewall.service` default-drops unknown ports on `fips0` — check for an
-   accept rule and whether `:3000` etc. are missing from it.
-2. Is the service bound to `127.0.0.1` only, rather than the `fips0` address?
-   (VPS2's `:3000` is bound by a `node` process — confirm its bind address.)
-3. `Connection refused` means *nothing listening* (not a routing failure); the
-   **timeouts** are the real signal and deserve the attention.
+**No CDN data-plane phase can be attempted until this is resolved.** Diagnose, in
+order — steps 1 and 2 are now **eliminated** by the above, so start at 3:
+
+1. ~~`fips-firewall.service`~~ — **eliminated**: the accept rule is present and the
+   SYN is already on the wire above it.
+2. ~~Service bound to `127.0.0.1` only~~ — **eliminated**: the listener binds `*`
+   and VPS2 self-connects successfully.
+3. **The live lead:** why does an inbound TCP segment on `fips0` not reach the
+   socket? Check FIPS's own data-plane handling — MTU/segment handling on the
+   TUN path (mesh MTU is **1203** here vs `fips0` link MTU 1280), checksum/TCP-offload
+   interaction on the tun device, and whether the daemon forwards native IP flows
+   only for flows it has registered. Use `tcpdump` on `fips0` on **both** sides
+   (confirmed: outbound SYN at x280, inbound SYN at VPS2, no reply) plus the
+   daemon's own counters (`fipsctl show native-flows`, `show routing`).
 
 **Gate:** a TCP connect from two distinct hosts to a test listener on a third
 host's `fips0:<port>` succeeds. Record the exact command and result.
@@ -330,7 +345,7 @@ role before T5 returns a verdict.**
 | T0 | Venue inventory + FIPS pin check | — | fleet | ✅ done (`evidence/00`) |
 | T0b | Blossom HTTP surface recon | — | local | ✅ done (`evidence/01`) |
 | T1 | Shared-identity verdict | — | source | ✅ **falsified** (`evidence/02`) |
-| T1b | **Mesh data-plane gate (Phase 1.5)** | T0 | 3 hosts | ⬜ **blocking** |
+| T1b | **Mesh data-plane gate (Phase 1.5)** | T0 | 3 hosts | 🔴 **FAIL — root-caused** (`evidence/07` §A) |
 | T2 | `mk-fips-config.sh` (10 tests) | — | local | ✅ done |
 | T3 | `cdn-proxy.py` (10 tests) | — | local | ✅ done |
 | T4 | `sync-regions.py` (11 tests) | — | local | ✅ done |
