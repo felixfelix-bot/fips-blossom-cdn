@@ -1,3 +1,8 @@
+> **HISTORICAL / SUPERSEDED INTERPRETATION:** [Authoritative correction](../docs/EVIDENCE-CORRECTION.md) takes precedence.
+> Observations below are preserved as originally reported, not newly verified.
+> Anycast falsification, no-locality, root-cause and harness-safety claims are withdrawn
+> where identified there. Do not execute the historical probe/deployment instructions.
+
 # Evidence 01 — Blossom HTTP surface (what a replication job can actually rely on)
 
 **Sources** (both local, HEAD-pinned, 2026-10-23):

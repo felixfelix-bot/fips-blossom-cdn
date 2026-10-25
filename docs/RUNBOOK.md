@@ -1,3 +1,8 @@
+> **HISTORICAL / SUPERSEDED INTERPRETATION:** [Authoritative correction](../docs/EVIDENCE-CORRECTION.md) takes precedence.
+> Observations below are preserved as originally reported, not newly verified.
+> Anycast falsification, no-locality, root-cause and harness-safety claims are withdrawn
+> where identified there. Do not execute the historical probe/deployment instructions.
+
 # Runbook — deploy, verify, roll back
 
 Assumes the ansible role shape in `ansible/roles/`. Every command is idempotent;

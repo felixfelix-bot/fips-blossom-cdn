@@ -1,3 +1,8 @@
+> **HISTORICAL / SUPERSEDED INTERPRETATION:** [Authoritative correction](../docs/EVIDENCE-CORRECTION.md) takes precedence.
+> Observations below are preserved as originally reported, not newly verified.
+> Anycast falsification, no-locality, root-cause and harness-safety claims are withdrawn
+> where identified there. Do not execute the historical probe/deployment instructions.
+
 # Evidence 08 — Phase 3 shared-identity, netns venue: prediction NOT reproduced as written
 
 **Probe:** 2026-10-25, run on **x280** in network + mount namespaces. **Zero

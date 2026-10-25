@@ -1,3 +1,8 @@
+> **HISTORICAL / SUPERSEDED INTERPRETATION:** [Authoritative correction](../docs/EVIDENCE-CORRECTION.md) takes precedence.
+> Observations below are preserved as originally reported, not newly verified.
+> Anycast falsification, no-locality, root-cause and harness-safety claims are withdrawn
+> where identified there. Do not execute the historical probe/deployment instructions.
+
 # Evidence 07 — Fleet execution attempt: Phase 1.5 gate + venue capability
 
 **Probe:** 2026-10-25, run from **x280** (DE, Fenix/FIPS 0.5.3, inside the live fleet mesh).
