@@ -99,27 +99,58 @@ def main() -> int:
     rec: dict = {"nodes": nodes, "claims": {}}
 
     # ---------- M1 correctness across a real hop -------------------------
-    body = os.urandom(512 * 1024) + b"fleet-m1"
+    # 64 KiB rather than 512 KiB: the DE->US path carries roughly 3.4 kB/s, so a
+    # half-megabyte object takes minutes and would make this claim a test of
+    # patience. Correctness does not need size, and M4 measures the rate
+    # explicitly instead of smuggling it in here as a timeout.
+    body = os.urandom(64 * 1024) + b"fleet-m1"
     key = hashlib.sha256(body).hexdigest()
     put(f"{origin['url']}/blob", body)
     rec["claims"]["m1_correct_bytes"] = {
         "key": key,
+        "object_bytes": len(body),
         "per_replica": {},
     }
     for r in replicas:
-        got = get(f"{r['url']}/blob/{key}")
-        rec["claims"]["m1_correct_bytes"]["per_replica"][r["name"]] = (
-            "ok" if hashlib.sha256(got).hexdigest() == key else "HASH-MISMATCH")
+        t0 = time.perf_counter()
+        try:
+            got = get(f"{r['url']}/blob/{key}", timeout=180)
+            verdict = ("ok" if hashlib.sha256(got).hexdigest() == key
+                       else "HASH-MISMATCH")
+        except Exception as exc:  # noqa: BLE001
+            # A timeout is a RESULT, not a crash: record it and keep going so
+            # one slow path cannot destroy the other five claims.
+            verdict = f"TIMEOUT-OR-ERROR {type(exc).__name__}"
+        rec["claims"]["m1_correct_bytes"]["per_replica"][r["name"]] = {
+            "result": verdict,
+            "ms": round((time.perf_counter() - t0) * 1000, 1),
+        }
 
     # ---------- M2 order independence -----------------------------------
     # Measure each replica directly, several times, so the claim is about the
     # NETWORK and not about one lucky sample.
     lat: dict[str, float] = {}
     samples: dict[str, list[float]] = {}
+    m1 = rec["claims"]["m1_correct_bytes"]["per_replica"]
     for r in replicas:
+        if m1.get(r["name"], {}).get("result") != "ok":
+            # Unreachable or slow beyond the M1 timeout: exclude it from the
+            # selection claim rather than inventing a latency for it.
+            lat[r["name"]] = float("inf")
+            samples[r["name"]] = []
+            continue
         body_r, ms = timed_get(f"{r['url']}/blob/{key}", reps=3)
         lat[r["name"]] = ms
         samples[r["name"]] = [round(ms, 2)]
+    reachable = [n for n, v in lat.items() if v != float("inf")]
+    if not reachable:
+        rec["claims"]["m2_order_independence"] = {
+            "error": "no replica answered M1; selection cannot be measured"}
+        os.makedirs(os.path.dirname(os.path.abspath(args.out)), exist_ok=True)
+        with open(args.out, "w", encoding="utf-8") as fh:
+            json.dump(rec, fh, indent=2, sort_keys=True)
+        print(json.dumps(rec, indent=2, sort_keys=True))
+        return 1
     fastest = min(lat, key=lambda k: lat[k])
     slowest = max(lat, key=lambda k: lat[k])
 
@@ -244,7 +275,7 @@ def main() -> int:
     victim_node = next(x for x in nodes if x["name"] == victim)
     cat = Catalogue([Replica(npub=r["name"], base_url=r["url"]) for r in replicas],
                     cooldown_s=60.0)
-    for r in cat.replicas:
+    for r in cat.all():
         cat.report_success(r, lat[r.npub])
     sel = Selector(cat, timeout_s=8.0)
     kill_info = {}
