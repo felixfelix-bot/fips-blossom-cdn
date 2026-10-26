@@ -4,6 +4,29 @@ Content-addressed delivery over a FIPS mesh, measured on real hardware.
 **Not a production CDN** — it is an experiment with published, reproducible
 numbers, including the ones that failed.
 
+## What this is — and what [hashtree](https://github.com/mmalmi/hashtree) is
+
+Both are content-addressed SHA-256 blob stores fetched from Blossom or FIPS
+peers. The plumbing is the same. The product is not.
+
+**This repo is a delivery layer.** It answers *"give me the bytes behind this
+hash as fast as possible."* It has no identity, no names, no directories and no
+opinion about who published anything.
+
+**Hashtree is a publishing layer.** It answers *"prove this npub published this
+content under this name, and let me verify it without trusting anyone."* Signed
+Nostr roots give stable `npub/tree/path` addresses over immutable content; CHK
+keeps stored bytes encrypted; Merkle trees address whole sites, not one object.
+
+The divider is **mutability**: a website needs stable URLs, and content
+addressing alone cannot provide them. Everything else — identity, keys, relay
+freshness rules, peer forwarding — follows from solving that. A CDN never has to
+solve it.
+
+So this is not a competitor to hashtree; it is roughly the category of one of
+hashtree's internal parts (their `BlobRouter` + in-flight coalescing, wearing
+different clothes). See [the gap analysis](docs/hashtree-gap-analysis.md).
+
 ![Chunk-size sweep: median completion time and completion rate against chunk size, per client concurrency](docs/sweep.svg)
 
 ## Current status (2026-10-26)
