@@ -120,6 +120,40 @@ hypothesis is that the mesh drops long-idle TCP connections, which would need a
 `tcpdump` on the replica during a concurrent fill to confirm. **Unconfirmed —
 do not treat it as the answer.**
 
+### M6 resolved as to mechanism: transfers stall after ~20 KB
+
+A capture on the replica during a 16-client run (`scripts/pcap_conn_summary.py`)
+settles it. Nothing is dropped and nothing is reset:
+
+- client connections seen: **18**
+- handshake completed: **18**
+- received payload: **18**
+- reset: **0**
+- closed with FIN: **8**
+
+Every connection was accepted and every one received bytes. The split is in how
+many bytes arrived:
+
+| delivered | connections | closed |
+|---|---|---|
+| **33,005 B (complete 32 KiB object)** | 7 | yes |
+| ~23,181 B | 2 | no |
+| ~20,764 B | 7 | no |
+| 19,549 B | 1 | no |
+
+Seven connections got the whole object and finished. Ten stalled at roughly
+**20 KB** and never closed, so the client sat until its 300 s timeout.
+
+So the earlier "idle connection" hypothesis is **wrong** too: the connections
+are not idle and not dropped, they are mid-transfer and then simply stop
+advancing. The stall point is a byte count (~20 KB), not a timeout and not an
+object-size fraction — which is why shrinking the object from 256 KiB to 32 KiB
+changed nothing but the amount left undelivered.
+
+This is the same phenomenon as the "3.4 kB/s" figure in the throughput section:
+that number was never steady-state bandwidth. It was a transfer that stalled and
+was measured end to end. Both open issues are one issue.
+
 Practical consequence: the M6 test as written conflates "does coalescing
 deduplicate the work" with "can this mesh deliver to N concurrent clients over
 the duration of a fill". Those are separate questions, and only the first is
@@ -141,7 +175,10 @@ coalescing deduplicates.
   move during a stalled transfer. Full-size segments are being lost and the
   Packet-Too-Big signal is not reaching the sender. Lowering the interface MTU
   to 1100 made it worse, not better (the mesh address dropped entirely), so the
-  cause is not simply an overstated MTU. **Unresolved.**
+  cause is not simply an overstated MTU. **Unresolved** — but note the packet
+  capture in the M6 section shows transfers stalling after ~20 KB, so 3.4 kB/s
+  is a stalled transfer measured end to end, not a steady-state rate. The two
+  open issues are one.
 - **CPU-boundedness** of the 11 MiB/s figure (no `--ssh` on this run).
 - **Authorization.** Any node serves any key it holds.
 - **Range/resume.** Not implemented.
