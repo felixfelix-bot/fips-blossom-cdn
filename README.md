@@ -35,12 +35,6 @@ So this is not a competitor to hashtree; it is roughly the category of one of
 hashtree's internal parts (their `BlobRouter` + in-flight coalescing, wearing
 different clothes). See [the gap analysis](docs/hashtree-gap-analysis.md).
 
-## The chunk-size tradeoff
-
-Five charts of the same 21 measurements — heatmap, split time/completion panels,
-log-scale crossings, grouped bars, and a winners-only summary — are in
-**[Results](docs/RESULTS.md)**, with what each one is good for.
-
 ## Current status (2026-10-26)
 
 Deployed to **four real hosts across two sites** by Ansible: one origin (DE) and
@@ -85,7 +79,11 @@ Three findings, each from a measurement that killed a plausible theory:
 
 ## The chunk-size tradeoff
 
-The chart above is a 7 × 3 sweep: chunk size against client concurrency, 1 MiB
+Five charts of these 21 measurements — heatmap, split time/completion panels,
+log-scale crossings, grouped bars, and a winners-only summary — are in
+**[Results](docs/RESULTS.md)**, with what each one is good for.
+
+The heatmap above is a 7 × 3 sweep: chunk size against client concurrency, 1 MiB
 object, 4 concurrent fetches per client, retry enabled.
 
 | chunk | 6 clients | 16 clients | 32 clients |
