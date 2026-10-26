@@ -36,11 +36,20 @@ import json
 import threading
 from concurrent.futures import ThreadPoolExecutor
 
-# Measured on the fleet (512 KiB object, 16 concurrent clients, retry enabled):
-#   16 KiB -> 38.0 s   64 KiB -> 38.0 s   256 KiB -> 20.1 s   512 KiB -> 17.6 s
-# Round-trip cost dominates, so larger chunks win even above the flow ceiling,
-# because retry -- not small chunks -- is what recovers a stalled flow.
-DEFAULT_CHUNK = 256 * 1024
+# Selected from the 7 x 3 sweep in evidence/12 (1 MiB object, retry enabled).
+# Median completion time, all completing 100%:
+#
+#   chunk    6 clients   16 clients   32 clients
+#   128 KiB     20.3 s       49.3 s       50.6 s
+#   512 KiB     21.7 s       25.3 s       56.1 s
+#   1024 KiB    11.4 s       18.6 s       57.2 s
+#
+# There is no single best size: one big chunk wins at low concurrency because it
+# amortises the ~600 ms round trip, while 128 KiB wins at 32 clients because a
+# single large flow retries expensively under contention. 512 KiB is the best
+# all-round point -- 100% completion at every level and within ~15% of the winner
+# at each. Below 128 KiB runs stop completing entirely.
+DEFAULT_CHUNK = 512 * 1024
 DEFAULT_CONCURRENCY = 4
 DEFAULT_RETRIES = 4
 

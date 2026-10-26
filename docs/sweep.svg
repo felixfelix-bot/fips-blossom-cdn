@@ -1,0 +1,80 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="620" viewBox="0 0 960 620" font-family="ui-sans-serif,-apple-system,Segoe UI,Helvetica,Arial,sans-serif">
+<rect width="960" height="620" fill="#ffffff"/>
+<text x="24" y="26" font-size="17" font-weight="600" fill="#111">Fleet chunk-size sweep — DE origin → US replica, 1 MiB object</text>
+<text x="24" y="28" font-size="13" font-weight="600" fill="#333">A. median completion time (lower is better)</text>
+<line x1="78" y1="300.0" x2="932" y2="300.0" stroke="#e8e8e8"/>
+<text x="68" y="304.0" font-size="11" fill="#666" text-anchor="end">0s</text>
+<line x1="78" y1="235.0" x2="932" y2="235.0" stroke="#e8e8e8"/>
+<text x="68" y="239.0" font-size="11" fill="#666" text-anchor="end">22s</text>
+<line x1="78" y1="170.0" x2="932" y2="170.0" stroke="#e8e8e8"/>
+<text x="68" y="174.0" font-size="11" fill="#666" text-anchor="end">45s</text>
+<line x1="78" y1="105.0" x2="932" y2="105.0" stroke="#e8e8e8"/>
+<text x="68" y="109.0" font-size="11" fill="#666" text-anchor="end">68s</text>
+<line x1="78" y1="40.0" x2="932" y2="40.0" stroke="#e8e8e8"/>
+<text x="68" y="44.0" font-size="11" fill="#666" text-anchor="end">90s</text>
+<polyline points="78.0,205.8 220.3,216.8 362.7,205.2 505.0,241.4 647.3,202.6 789.7,237.3 932.0,267.1" fill="none" stroke="#1f77b4" stroke-width="2.2"/>
+<circle cx="78.0" cy="205.8" r="5" fill="#1f77b4" stroke="#1f77b4" stroke-width="2"/>
+<circle cx="220.3" cy="216.8" r="5" fill="#1f77b4" stroke="#1f77b4" stroke-width="2"/>
+<circle cx="362.7" cy="205.2" r="5" fill="#1f77b4" stroke="#1f77b4" stroke-width="2"/>
+<circle cx="505.0" cy="241.4" r="5" fill="#1f77b4" stroke="#1f77b4" stroke-width="2"/>
+<circle cx="647.3" cy="202.6" r="5" fill="#1f77b4" stroke="#1f77b4" stroke-width="2"/>
+<circle cx="789.7" cy="237.3" r="5" fill="#1f77b4" stroke="#1f77b4" stroke-width="2"/>
+<circle cx="932.0" cy="267.1" r="5" fill="#1f77b4" stroke="#1f77b4" stroke-width="2"/>
+<polyline points="78.0,68.6 220.3,112.2 362.7,159.9 505.0,157.6 647.3,155.6 789.7,226.9 932.0,246.3" fill="none" stroke="#d62728" stroke-width="2.2"/>
+<circle cx="78.0" cy="68.6" r="5" fill="#ffffff" stroke="#d62728" stroke-width="2"/>
+<text x="78.0" y="56.6" font-size="10" fill="#b45309" text-anchor="middle">12/16</text>
+<circle cx="220.3" cy="112.2" r="5" fill="#d62728" stroke="#d62728" stroke-width="2"/>
+<circle cx="362.7" cy="159.9" r="5" fill="#d62728" stroke="#d62728" stroke-width="2"/>
+<circle cx="505.0" cy="157.6" r="5" fill="#d62728" stroke="#d62728" stroke-width="2"/>
+<circle cx="647.3" cy="155.6" r="5" fill="#d62728" stroke="#d62728" stroke-width="2"/>
+<circle cx="789.7" cy="226.9" r="5" fill="#d62728" stroke="#d62728" stroke-width="2"/>
+<circle cx="932.0" cy="246.3" r="5" fill="#d62728" stroke="#d62728" stroke-width="2"/>
+<polyline points="78.0,63.1 220.3,65.4 362.7,110.2 505.0,153.8 647.3,83.0 789.7,137.9 932.0,134.8" fill="none" stroke="#2ca02c" stroke-width="2.2"/>
+<circle cx="78.0" cy="63.1" r="5" fill="#ffffff" stroke="#2ca02c" stroke-width="2"/>
+<text x="78.0" y="51.1" font-size="10" fill="#b45309" text-anchor="middle">2/32</text>
+<circle cx="220.3" cy="65.4" r="5" fill="#ffffff" stroke="#2ca02c" stroke-width="2"/>
+<text x="220.3" y="53.4" font-size="10" fill="#b45309" text-anchor="middle">22/32</text>
+<circle cx="362.7" cy="110.2" r="5" fill="#ffffff" stroke="#2ca02c" stroke-width="2"/>
+<text x="362.7" y="98.2" font-size="10" fill="#b45309" text-anchor="middle">27/32</text>
+<circle cx="505.0" cy="153.8" r="5" fill="#2ca02c" stroke="#2ca02c" stroke-width="2"/>
+<circle cx="647.3" cy="83.0" r="5" fill="#2ca02c" stroke="#2ca02c" stroke-width="2"/>
+<circle cx="789.7" cy="137.9" r="5" fill="#2ca02c" stroke="#2ca02c" stroke-width="2"/>
+<circle cx="932.0" cy="134.8" r="5" fill="#2ca02c" stroke="#2ca02c" stroke-width="2"/>
+<text x="78.0" y="318" font-size="11" fill="#666" text-anchor="middle">16</text>
+<text x="220.3" y="318" font-size="11" fill="#666" text-anchor="middle">32</text>
+<text x="362.7" y="318" font-size="11" fill="#666" text-anchor="middle">64</text>
+<text x="505.0" y="318" font-size="11" fill="#666" text-anchor="middle">128</text>
+<text x="647.3" y="318" font-size="11" fill="#666" text-anchor="middle">256</text>
+<text x="789.7" y="318" font-size="11" fill="#666" text-anchor="middle">512</text>
+<text x="932.0" y="318" font-size="11" fill="#666" text-anchor="middle">1024</text>
+<text x="505" y="338" font-size="12" fill="#333" text-anchor="middle">chunk size (KiB, log scale)</text>
+<line x1="782" y1="46" x2="804" y2="46" stroke="#1f77b4" stroke-width="2.2"/>
+<text x="812" y="50" font-size="11" fill="#333">6 clients</text>
+<line x1="782" y1="64" x2="804" y2="64" stroke="#d62728" stroke-width="2.2"/>
+<text x="812" y="68" font-size="11" fill="#333">16 clients</text>
+<line x1="782" y1="82" x2="804" y2="82" stroke="#2ca02c" stroke-width="2.2"/>
+<text x="812" y="86" font-size="11" fill="#333">32 clients</text>
+<text x="782" y="104" font-size="10" fill="#b45309">open circle = incomplete</text>
+<text x="24" y="348" font-size="13" font-weight="600" fill="#333">B. completion rate (a fast run that drops clients is not fast)</text>
+<line x1="78" y1="600.0" x2="932" y2="600.0" stroke="#e8e8e8"/>
+<text x="68" y="604.0" font-size="11" fill="#666" text-anchor="end">0%</text>
+<line x1="78" y1="540.0" x2="932" y2="540.0" stroke="#e8e8e8"/>
+<text x="68" y="544.0" font-size="11" fill="#666" text-anchor="end">25%</text>
+<line x1="78" y1="480.0" x2="932" y2="480.0" stroke="#e8e8e8"/>
+<text x="68" y="484.0" font-size="11" fill="#666" text-anchor="end">50%</text>
+<line x1="78" y1="420.0" x2="932" y2="420.0" stroke="#e8e8e8"/>
+<text x="68" y="424.0" font-size="11" fill="#666" text-anchor="end">75%</text>
+<line x1="78" y1="360.0" x2="932" y2="360.0" stroke="#e8e8e8"/>
+<text x="68" y="364.0" font-size="11" fill="#666" text-anchor="end">100%</text>
+<polyline points="78.0,360.0 220.3,360.0 362.7,360.0 505.0,360.0 647.3,360.0 789.7,360.0 932.0,360.0" fill="none" stroke="#1f77b4" stroke-width="2.2" stroke-dasharray="5 3"/>
+<polyline points="78.0,420.0 220.3,360.0 362.7,360.0 505.0,360.0 647.3,360.0 789.7,360.0 932.0,360.0" fill="none" stroke="#d62728" stroke-width="2.2" stroke-dasharray="5 3"/>
+<polyline points="78.0,585.0 220.3,435.0 362.7,397.5 505.0,360.0 647.3,360.0 789.7,360.0 932.0,360.0" fill="none" stroke="#2ca02c" stroke-width="2.2" stroke-dasharray="5 3"/>
+<text x="78.0" y="618" font-size="11" fill="#666" text-anchor="middle">16</text>
+<text x="220.3" y="618" font-size="11" fill="#666" text-anchor="middle">32</text>
+<text x="362.7" y="618" font-size="11" fill="#666" text-anchor="middle">64</text>
+<text x="505.0" y="618" font-size="11" fill="#666" text-anchor="middle">128</text>
+<text x="647.3" y="618" font-size="11" fill="#666" text-anchor="middle">256</text>
+<text x="789.7" y="618" font-size="11" fill="#666" text-anchor="middle">512</text>
+<text x="932.0" y="618" font-size="11" fill="#666" text-anchor="middle">1024</text>
+<text x="505" y="638" font-size="12" fill="#333" text-anchor="middle">chunk size (KiB, log scale)</text>
+</svg>

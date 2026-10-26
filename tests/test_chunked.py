@@ -102,7 +102,10 @@ class TestChunkedFetcher(unittest.TestCase):
 
     def test_never_exceeds_configured_concurrency(self):
         data = b"c" * (64 * 1024 * 8)
-        manifest, chunks = split(data)
+        # Explicit small chunk size so there are many chunks and the pool is
+        # actually exercised; the default is now large enough to be one chunk.
+        manifest, chunks = split(data, chunk_size=64 * 1024)
+        self.assertGreater(len(chunks), 4)
         t = FakeTransport(chunks)
         f = ChunkedFetcher(t, concurrency=4)
         f.fetch_manifest(manifest)

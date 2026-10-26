@@ -24,6 +24,13 @@ cdn-fleet-test:
 		--node hz-us-b=http://[fdfd:c0e5:3717:6cb1:bb60:de97:987e:7149]:18080 \
 		--out evidence/fleet-cdn-results.json
 
+# Chunk-size x concurrency sweep. Seed on the replica, fetch from the client.
+# Two steps because seeding locally keeps setup traffic off the measured path.
+cdn-fleet-sweep:
+	@echo "1) on the replica host:  python3 scripts/sweep_matrix.py seed"
+	@echo "2) on the client host:  python3 scripts/sweep_matrix.py fetch 6,16,32"
+	@echo "3) locally:             python3 scripts/plot_sweep.py /tmp/sweep_matrix.json docs/sweep.svg"
+
 syntax:
 	@bash -n scripts/health-check.sh scripts/mk-fips-config.sh scripts/cdn_acceptance.sh
 	@python3 -m py_compile scripts/cdn-proxy.py scripts/sync-regions.py \

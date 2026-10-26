@@ -1,0 +1,196 @@
+{
+  "concurrency_per_client": 4,
+  "object_bytes": 1048576,
+  "retries": 6,
+  "rows": [
+    {
+      "chunk_kib": 16,
+      "chunks": 64,
+      "clients": 6,
+      "complete": 6,
+      "mean_attempts": 69.5,
+      "median_ok_s": 32.6,
+      "wasted_ratio": 1.09
+    },
+    {
+      "chunk_kib": 16,
+      "chunks": 64,
+      "clients": 16,
+      "complete": 12,
+      "mean_attempts": 77.4,
+      "median_ok_s": 80.1,
+      "wasted_ratio": 1.21
+    },
+    {
+      "chunk_kib": 16,
+      "chunks": 64,
+      "clients": 32,
+      "complete": 2,
+      "mean_attempts": 70.9,
+      "median_ok_s": 82.0,
+      "wasted_ratio": 1.11
+    },
+    {
+      "chunk_kib": 32,
+      "chunks": 32,
+      "clients": 6,
+      "complete": 6,
+      "mean_attempts": 36.2,
+      "median_ok_s": 28.8,
+      "wasted_ratio": 1.13
+    },
+    {
+      "chunk_kib": 32,
+      "chunks": 32,
+      "clients": 16,
+      "complete": 16,
+      "mean_attempts": 42.2,
+      "median_ok_s": 65.0,
+      "wasted_ratio": 1.32
+    },
+    {
+      "chunk_kib": 32,
+      "chunks": 32,
+      "clients": 32,
+      "complete": 22,
+      "mean_attempts": 45.8,
+      "median_ok_s": 81.2,
+      "wasted_ratio": 1.43
+    },
+    {
+      "chunk_kib": 64,
+      "chunks": 16,
+      "clients": 6,
+      "complete": 6,
+      "mean_attempts": 19.8,
+      "median_ok_s": 32.8,
+      "wasted_ratio": 1.24
+    },
+    {
+      "chunk_kib": 64,
+      "chunks": 16,
+      "clients": 16,
+      "complete": 16,
+      "mean_attempts": 23.2,
+      "median_ok_s": 48.5,
+      "wasted_ratio": 1.45
+    },
+    {
+      "chunk_kib": 64,
+      "chunks": 16,
+      "clients": 32,
+      "complete": 27,
+      "mean_attempts": 27.1,
+      "median_ok_s": 65.7,
+      "wasted_ratio": 1.69
+    },
+    {
+      "chunk_kib": 128,
+      "chunks": 8,
+      "clients": 6,
+      "complete": 6,
+      "mean_attempts": 11.5,
+      "median_ok_s": 20.3,
+      "wasted_ratio": 1.44
+    },
+    {
+      "chunk_kib": 128,
+      "chunks": 8,
+      "clients": 16,
+      "complete": 16,
+      "mean_attempts": 15.1,
+      "median_ok_s": 49.3,
+      "wasted_ratio": 1.89
+    },
+    {
+      "chunk_kib": 128,
+      "chunks": 8,
+      "clients": 32,
+      "complete": 32,
+      "mean_attempts": 16.5,
+      "median_ok_s": 50.6,
+      "wasted_ratio": 2.06
+    },
+    {
+      "chunk_kib": 256,
+      "chunks": 4,
+      "clients": 6,
+      "complete": 6,
+      "mean_attempts": 7.8,
+      "median_ok_s": 33.7,
+      "wasted_ratio": 1.96
+    },
+    {
+      "chunk_kib": 256,
+      "chunks": 4,
+      "clients": 16,
+      "complete": 16,
+      "mean_attempts": 10.5,
+      "median_ok_s": 50.0,
+      "wasted_ratio": 2.62
+    },
+    {
+      "chunk_kib": 256,
+      "chunks": 4,
+      "clients": 32,
+      "complete": 32,
+      "mean_attempts": 13.6,
+      "median_ok_s": 75.1,
+      "wasted_ratio": 3.41
+    },
+    {
+      "chunk_kib": 512,
+      "chunks": 2,
+      "clients": 6,
+      "complete": 6,
+      "mean_attempts": 2.7,
+      "median_ok_s": 21.7,
+      "wasted_ratio": 1.33
+    },
+    {
+      "chunk_kib": 512,
+      "chunks": 2,
+      "clients": 16,
+      "complete": 16,
+      "mean_attempts": 3.7,
+      "median_ok_s": 25.3,
+      "wasted_ratio": 1.84
+    },
+    {
+      "chunk_kib": 512,
+      "chunks": 2,
+      "clients": 32,
+      "complete": 32,
+      "mean_attempts": 4.6,
+      "median_ok_s": 56.1,
+      "wasted_ratio": 2.31
+    },
+    {
+      "chunk_kib": 1024,
+      "chunks": 1,
+      "clients": 6,
+      "complete": 6,
+      "mean_attempts": 1.0,
+      "median_ok_s": 11.4,
+      "wasted_ratio": 1.0
+    },
+    {
+      "chunk_kib": 1024,
+      "chunks": 1,
+      "clients": 16,
+      "complete": 16,
+      "mean_attempts": 1.1,
+      "median_ok_s": 18.6,
+      "wasted_ratio": 1.06
+    },
+    {
+      "chunk_kib": 1024,
+      "chunks": 1,
+      "clients": 32,
+      "complete": 32,
+      "mean_attempts": 1.3,
+      "median_ok_s": 57.2,
+      "wasted_ratio": 1.31
+    }
+  ]
+}
