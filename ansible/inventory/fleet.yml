@@ -26,6 +26,10 @@ all:
     hz-de-b:
       ansible_ssh_host: cobrador
       cdn_mesh_ip: fd97:77d4:cd27:a6ae:1b29:e92e:fd96:dee8
+      # Deliberately small budget: this is the eviction-test node. Exceeding a
+      # 256 MiB budget would mean pushing a quarter-gigabyte over the mesh,
+      # which measures the link rather than the store's LRU behaviour.
+      cdn_budget_bytes: 8388608      # 8 MiB
     hz-us-a:
       ansible_ssh_host: hermes-nvme
       cdn_mesh_ip: fdb8:d8ff:833c:6814:5865:55ac:3c98:afd9

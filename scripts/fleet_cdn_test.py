@@ -202,7 +202,9 @@ def main() -> int:
     # ---------- M4 throughput -------------------------------------------
     # One 32 MiB object, streamed from the nearest replica; report MB/s and
     # CPU-seconds consumed per MB so a CPU-bound result is visible.
-    big = os.urandom(8 * 1024 * 1024) * 4
+    # Must stay under --entry-max-bytes (8 MiB default) or the node
+    # rejects the object and this measures nothing.
+    big = os.urandom(6 * 1024 * 1024)
     big_key = hashlib.sha256(big).hexdigest()
     put(f"{origin['url']}/blob", big, timeout=180)
     near = min(lat, key=lambda k: lat[k])
@@ -268,6 +270,46 @@ def main() -> int:
                                    - before.get("coalesced_waiters", 0),
     }
 
+    # ---------- M5 eviction under load ---------------------------------
+    # Push well past the replica's byte budget, then confirm the store stayed
+    # bounded AND that an evicted object still returns correct bytes.
+    # M3 now runs after this block, so no replica is dead yet. Use the
+    # lowest-latency replica: eviction is local store behaviour, and pushing
+    # past the budget across a 3 kB/s link would measure the link, not the
+    # store.
+    ev_replica = next((r for r in replicas if r["name"] == min(lat, key=lambda k: lat[k])), None)
+    if ev_replica:
+        made = []
+        # 24 x 512 KiB = 12 MiB against an 8 MiB budget, so eviction must fire.
+        for i in range(24):
+            b = os.urandom(512 * 1024) + f"evict-{i}".encode()
+            k = hashlib.sha256(b).hexdigest()
+            put(f"{origin['url']}/blob", b)
+            try:
+                get(f"{ev_replica['url']}/blob/{k}", timeout=120)
+            except Exception as exc:  # noqa: BLE001
+                made.append({"key": k[:12], "error": type(exc).__name__})
+                continue
+            made.append({"key": k, "body_len": len(b)})
+        st = stats(ev_replica)
+        first_key = next((m["key"] for m in made
+                          if len(m.get("key", "")) == 64), None)
+        still_correct = None
+        if first_key:
+            b2 = get(f"{ev_replica['url']}/blob/{first_key}", timeout=120)
+            still_correct = hashlib.sha256(b2).hexdigest() == first_key
+        rec["claims"]["m5_eviction"] = {
+            "replica": ev_replica["name"],
+            "objects_pushed": len(made),
+            "objects_pushed_bytes": 24 * 512 * 1024,
+            "store_bytes_after": st.get("bytes"),
+            "store_budget": st.get("budget"),
+            "within_budget": (st.get("bytes") is not None
+                              and st.get("bytes") <= st.get("budget", 0)),
+            "evictions": st.get("evictions"),
+            "refetch_of_evicted_object_correct": still_correct,
+        }
+
     # ---------- M3 failover after SIGKILL -------------------------------
     # Kill the FASTEST replica outright. No graceful shutdown: a clean exit can
     # close sockets and hide a failover bug.
@@ -314,41 +356,6 @@ def main() -> int:
         }
     except NoReplicaAvailable as exc:
         rec["claims"]["m3_failover"] = {"victim": victim, "result": f"FAIL {exc}", **kill_info}
-
-    # ---------- M5 eviction under load ---------------------------------
-    # Push well past the replica's byte budget, then confirm the store stayed
-    # bounded AND that an evicted object still returns correct bytes.
-    ev_replica = next((r for r in replicas if r["name"] != victim), None)
-    if ev_replica:
-        made = []
-        for i in range(12):
-            b = os.urandom(512 * 1024) + f"evict-{i}".encode()
-            k = hashlib.sha256(b).hexdigest()
-            put(f"{origin['url']}/blob", b)
-            try:
-                get(f"{ev_replica['url']}/blob/{k}", timeout=120)
-            except Exception as exc:  # noqa: BLE001
-                made.append({"key": k[:12], "error": type(exc).__name__})
-                continue
-            made.append({"key": k, "body_len": len(b)})
-        st = stats(ev_replica)
-        first_key = next((m["key"] for m in made
-                          if len(m.get("key", "")) == 64), None)
-        still_correct = None
-        if first_key:
-            b2 = get(f"{ev_replica['url']}/blob/{first_key}", timeout=120)
-            still_correct = hashlib.sha256(b2).hexdigest() == first_key
-        rec["claims"]["m5_eviction"] = {
-            "replica": ev_replica["name"],
-            "objects_pushed": len(made),
-            "objects_pushed_bytes": 12 * 512 * 1024,
-            "store_bytes_after": st.get("bytes"),
-            "store_budget": st.get("budget"),
-            "within_budget": (st.get("bytes") is not None
-                              and st.get("bytes") <= st.get("budget", 0)),
-            "evictions": st.get("evictions"),
-            "refetch_of_evicted_object_correct": still_correct,
-        }
 
     os.makedirs(os.path.dirname(os.path.abspath(args.out)), exist_ok=True)
     with open(args.out, "w", encoding="utf-8") as fh:
