@@ -1,0 +1,181 @@
+---
+# Deploy the CDN nodes to the fleet and prove the service answers.
+#
+# This playbook is meant to be RUN, not syntax-checked. It is idempotent: a
+# second run reports no changes for the unit and the config, because both are
+# content-addressed by hash rather than copied blindly.
+- name: Deploy CDN fleet nodes
+  hosts: all
+  gather_facts: true
+  become: true
+  vars:
+    cdn_src: "{{ playbook_dir }}/../.."
+  vars_files: []
+  tasks:
+    - name: Decide this host's role and extra args
+      ansible.builtin.set_fact:
+        cdn_role: "{{ 'origin' if inventory_hostname in groups['cdn_origin'] else 'replica' }}"
+        cdn_extra_args: >-
+          {%- if inventory_hostname in groups['cdn_origin'] -%}
+          {%- elif inventory_hostname == groups['cdn_origin'][0] -%}
+          --origin-url http://127.0.0.1:{{ cdn_port }} --loopback
+          {%- else -%}
+          --origin-url http://[{{ hostvars[groups['cdn_origin'][0]]['cdn_mesh_ip'] }}]:{{ cdn_port }}
+          {%- endif -%}
+
+    - name: Show interpreter per host
+      ansible.builtin.debug:
+        msg: "{{ inventory_hostname }} python={{ ansible_facts.python.version.major }}.{{ ansible_facts.python.version.minor }}"
+
+    - name: Create CDN root
+      ansible.builtin.file:
+        path: "{{ cdn_root }}"
+        state: directory
+        mode: "0755"
+
+    - name: Create data directory
+      ansible.builtin.file:
+        path: "{{ cdn_root }}/data"
+        state: directory
+        mode: "0755"
+
+    # One tarball instead of N per-file copies. The per-file `copy` looped over
+    # a multiplexed ssh session and stalled for minutes on the high-latency
+    # hosts; a single archive is one round trip and is also what makes the
+    # transfer idempotent (same bytes -> same checksum -> no change).
+    - name: Build the deploy archive locally
+      ansible.builtin.archive:
+        path:
+          - "{{ cdn_src }}/cdn"
+          - "{{ cdn_src }}/scripts/cdn_fleet_node.py"
+        dest: "{{ playbook_dir }}/../../.deploy/cdn-node.tar.gz"
+        format: gz
+      delegate_to: localhost
+      run_once: true
+      register: tarball
+
+    - name: Copy the deploy archive
+      ansible.builtin.copy:
+        src: "{{ cdn_src }}/.deploy/cdn-node.tar.gz"
+        dest: "{{ cdn_root }}/cdn-node.tar.gz"
+        mode: "0644"
+      register: pkg
+
+    # No `creates:` guard here on purpose. With it, a stale tree from an earlier
+    # partial run makes the task "skip" while the deployed code stays old — the
+    # run reports success and the node runs the previous version. Extraction is
+    # cheap and idempotent in effect; the restart below is gated on the archive
+    # checksum, so an unchanged archive still produces no service disruption.
+    - name: Unpack the CDN package
+      ansible.builtin.unarchive:
+        src: "{{ cdn_root }}/cdn-node.tar.gz"
+        dest: "{{ cdn_root }}"
+        remote_src: true
+        extra_opts: ["--overwrite"]
+      register: entry
+      changed_when: pkg.changed
+
+    # ── fips0 inbound allowance ──────────────────────────────────────────
+    # /etc/fips/fips.nft default-DROPs inbound on fips0 and permits only an
+    # allowlist (8443, 3001, 8200, 53, 22, 80, 443) plus ICMPv6 echo-request.
+    # That is why ping6 succeeds while TCP to a fresh port times out: the
+    # packet is delivered to fips0 and then dropped at the input hook by a
+    # table that is SEPARATE from ufw, so `ip6tables -S ufw6-user-input`
+    # showing `-i fips0 -j ACCEPT` is true and irrelevant.
+    # The supported extension point is a drop-in under /etc/fips/fips.d/.
+    - name: Create fips.d drop-in directory
+      ansible.builtin.file:
+        path: /etc/fips/fips.d
+        state: directory
+        mode: "0755"
+
+    - name: Allow the CDN port inbound on fips0 only
+      ansible.builtin.copy:
+        dest: /etc/fips/fips.d/20-cdn.nft
+        mode: "0644"
+        content: |
+          # Managed by the CDN playbook. Scoped to fips0 by the parent chain.
+          tcp dport {{ cdn_port }} accept
+      register: fipsdrop
+
+    - name: Apply the fips0 allowance
+      ansible.builtin.shell: |
+        set -euo pipefail
+        # Idempotent: the rule is added only if it is not already present.
+        if nft list table inet fips 2>/dev/null | grep -q "dport {{ cdn_port }}"; then
+          echo "already-present"
+        else
+          nft insert rule inet fips inbound iifname "fips0" tcp dport {{ cdn_port }} accept
+          echo "inserted"
+        fi
+      register: nftapply
+      changed_when: "'inserted' in nftapply.stdout"
+      when: true
+
+    - name: Persist the fips0 allowance across FIPS restarts
+      ansible.builtin.copy:
+        dest: /etc/fips/fips.d/20-cdn.nft
+        mode: "0644"
+        content: |
+          # Managed by the CDN playbook (config-as-code). Scoped to fips0 by
+          # the parent inbound chain in /etc/fips/fips.nft.
+          tcp dport {{ cdn_port }} accept
+
+    - name: Render the unit
+      ansible.builtin.template:
+        src: "{{ playbook_dir }}/../roles/cdn-node/templates/cdn-node.service.j2"
+        dest: /etc/systemd/system/cdn-node.service
+        mode: "0644"
+      register: unit
+
+    - name: Reload systemd
+      ansible.builtin.systemd:
+        daemon_reload: true
+      when: unit.changed
+
+    - name: Enable and start the node
+      ansible.builtin.systemd:
+        name: cdn-node
+        enabled: true
+        state: restarted
+      when: unit.changed or pkg.changed or entry.changed
+
+    - name: Ensure the node is running
+      ansible.builtin.systemd:
+        name: cdn-node
+        state: started
+        enabled: true
+
+    - name: Wait for /health
+      ansible.builtin.uri:
+        url: "http://127.0.0.1:{{ cdn_port }}/health"
+        return_content: true
+      register: health
+      retries: 20
+      delay: 1
+      until: health.status == 200
+
+    # Read the body explicitly rather than relying on `.json`: with
+    # `return_content` the field is `.content`, and `.json` only exists when the
+    # response declares a JSON content-type. Depending on the module version that
+    # distinction turns a healthy fleet into a playbook failure.
+    - name: Report health
+      ansible.builtin.debug:
+        msg: "{{ inventory_hostname }} -> {{ health.content }}"
+
+    - name: Fetch stats
+      ansible.builtin.uri:
+        url: "http://127.0.0.1:{{ cdn_port }}/stats"
+        return_content: true
+      register: st
+
+    - name: Report stats
+      ansible.builtin.debug:
+        msg: "{{ inventory_hostname }} stats={{ st.content }}"
+
+  handlers:
+    - name: restart cdn-node
+      ansible.builtin.systemd:
+        name: cdn-node
+        state: restarted
+        daemon_reload: true
