@@ -2,7 +2,8 @@
 
 Run 2026-10-26 on the live fleet. DE origin, US replica, 1 MiB object,
 4 concurrent fetches per client, 6 retries, per-chunk verification.
-Raw data: `evidence/sweep-matrix.json`. Chart: `docs/sweep.svg`.
+Raw data: `evidence/sweep-matrix.json`. Five rendered views with explanations:
+[`docs/RESULTS.md`](../docs/RESULTS.md).
 
 Chunks were seeded **locally on the replica** from a seeded SHAKE-256 stream, so
 the client recomputes identical hashes and no setup traffic crosses the mesh.

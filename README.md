@@ -4,6 +4,14 @@ Content-addressed delivery over a FIPS mesh, measured on real hardware.
 **Not a production CDN** — it is an experiment with published, reproducible
 numbers, including the ones that failed.
 
+![Heatmap: median completion time and completed-client counts for 7 chunk sizes at 3 concurrency levels](docs/plots/b_heatmap.svg)
+
+*What the repo is about, in one chart: how chunk size and client concurrency
+interact on a real transatlantic FIPS path. Green is fast, red is slow, a **red
+outline means the run did not complete** — 16 KiB chunks at 32 clients finished
+for 2 of 32. Full reading in [Results](docs/RESULTS.md); four more views of the
+same 21 measurements are there too.*
+
 ## What this is — and what [hashtree](https://github.com/mmalmi/hashtree) is
 
 Both are content-addressed SHA-256 blob stores fetched from Blossom or FIPS
@@ -27,7 +35,11 @@ So this is not a competitor to hashtree; it is roughly the category of one of
 hashtree's internal parts (their `BlobRouter` + in-flight coalescing, wearing
 different clothes). See [the gap analysis](docs/hashtree-gap-analysis.md).
 
-![Chunk-size sweep: median completion time and completion rate against chunk size, per client concurrency](docs/sweep.svg)
+## The chunk-size tradeoff
+
+Five charts of the same 21 measurements — heatmap, split time/completion panels,
+log-scale crossings, grouped bars, and a winners-only summary — are in
+**[Results](docs/RESULTS.md)**, with what each one is good for.
 
 ## Current status (2026-10-26)
 
