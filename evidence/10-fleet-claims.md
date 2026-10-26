@@ -85,6 +85,46 @@ completion within the client window.
 Recorded as partial. It is not a pass, and the mechanism working does not make
 the user-visible behaviour correct.
 
+### M6 follow-up: what it is not
+
+Reproduced twice on the fleet with per-client exception types recorded
+(`scripts/m6_probe.py`). The result is deterministic, not flaky:
+
+| object size | clients | ok | fail | exception | upstream fetches | waiters |
+|---|---|---|---|---|---|---|
+| 256 KiB | 16 | 6 | 10 | `TimeoutError` | 1 | 15 |
+| 32 KiB | 16 | 6 | 10 | `TimeoutError` | 1 | 15 |
+
+Ruled out, each by measurement rather than argument:
+
+- **Not the coalescer.** Unit tests show a slow-but-successful fill serves all
+  16 waiters with exactly one fetch, and a failed fill fails all 16. The fleet
+  numbers agree: 1 fetch, 15 waiters, in both runs.
+- **Not object size or bandwidth.** 32 KiB and 256 KiB give the identical 6/10
+  split. If egress bandwidth were the limit, an eight-fold smaller object would
+  have changed the outcome.
+- **Not connection capacity.** 16 parallel `/health` requests from the same
+  client to the same node returned **16/16 HTTP 200**. The listener accepts
+  concurrent connections fine.
+- **Not the accept backlog.** `socketserver` defaults `request_queue_size` to 5,
+  which looked like a good candidate, but a real 16-connection test against the
+  server passes with backlog 5. That hypothesis was wrong and the test that
+  "confirmed" it was deleted rather than kept as a false guard.
+- **Not a lock held during the response write.** The blob handler calls
+  `_send` with no lock held, so one slow reader cannot stall the others.
+
+What remains is specific to holding several connections open for the duration
+of a fill: requests that complete quickly (`/health`) all succeed, requests that
+sit open across a multi-second fill fail in the majority. The leading untested
+hypothesis is that the mesh drops long-idle TCP connections, which would need a
+`tcpdump` on the replica during a concurrent fill to confirm. **Unconfirmed —
+do not treat it as the answer.**
+
+Practical consequence: the M6 test as written conflates "does coalescing
+deduplicate the work" with "can this mesh deliver to N concurrent clients over
+the duration of a fill". Those are separate questions, and only the first is
+answered.
+
 ## What this establishes
 
 The CDN design works on real hardware across a real transatlantic path:
