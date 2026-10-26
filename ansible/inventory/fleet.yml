@@ -1,0 +1,54 @@
+# Fleet inventory for the CDN test.
+#
+# Hosts are addressed by their ssh aliases (~/.ssh/config), which resolve over
+# IPv6 (fips0) with the fleet key. Using the alias rather than an IP keeps this
+# file free of real addresses — the same inventory can be published.
+#
+#   hz-de-a / dq05        DE, LAN partner of dq05
+#   hz-de-b / cobrador    DE, same LAN as dq05 (sub-ms to each other)
+#   hz-us-a / hermes-nvme US datacentre
+#   hz-us-b / testserver2 US datacentre (sub-ms to hermes-nvme)
+#
+# Deliberate asymmetry for the test: DE<->US measures ~192-270 ms, DE LAN ~0.3-0.5
+# ms. That is a real 400x spread with no netem, which is what makes the selection
+# claim meaningful.
+all:
+  vars:
+    ansible_python_interpreter: /usr/bin/python3
+    cdn_port: 18080
+    cdn_budget_bytes: 268435456      # 256 MiB
+    cdn_entry_max_bytes: 8388608     # 8 MiB
+    cdn_root: /var/tmp/cdn-fleet
+  hosts:
+    hz-de-a:
+      ansible_ssh_host: dq05
+      cdn_mesh_ip: fdb0:bf34:d648:96ac:f65a:3fd6:358:710b   # fips0
+    hz-de-b:
+      ansible_ssh_host: cobrador
+      cdn_mesh_ip: fd97:77d4:cd27:a6ae:1b29:e92e:fd96:dee8
+      # Deliberately small budget: this is the eviction-test node. Exceeding a
+      # 256 MiB budget would mean pushing a quarter-gigabyte over the mesh,
+      # which measures the link rather than the store's LRU behaviour.
+      cdn_budget_bytes: 8388608      # 8 MiB
+    hz-us-a:
+      ansible_ssh_host: hermes-nvme
+      cdn_mesh_ip: fdb8:d8ff:833c:6814:5865:55ac:3c98:afd9
+    hz-us-b:
+      ansible_ssh_host: testserver2
+      cdn_mesh_ip: fdfd:c0e5:3717:6cb1:bb60:de97:987e:7149
+  children:
+    cdn_origin:
+      hosts:
+        hz-de-a:
+    cdn_replica:
+      hosts:
+        hz-de-b:
+        hz-us-a:
+        hz-us-b:
+
+  # The origin URL replicas fill from, over the mesh (never the LAN address:
+  # that would prove nothing about FIPS). Resolved from the origin group rather
+  # than written twice, so moving the origin host needs no edit here.
+  #
+  # Bracket form is required: an unbracketed IPv6 literal in a URL is ambiguous
+  # with the port separator and urllib rejects it.

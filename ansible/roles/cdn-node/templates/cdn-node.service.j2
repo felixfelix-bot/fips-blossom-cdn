@@ -1,0 +1,22 @@
+[Unit]
+Description=CDN fleet node ({{ cdn_role }})
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory={{ cdn_root }}
+# The deploy archive unpacks `cdn/` and `scripts/` at cdn_root, so the
+# entrypoint lives under scripts/. Getting this path wrong yields a
+# 96-restarts-in-3-minutes crash loop that systemd reports as "activating" —
+# which is why the playbook asserts /health rather than trusting unit state.
+ExecStart=/usr/bin/python3 {{ cdn_root }}/scripts/cdn_fleet_node.py {{ cdn_role }} --name {{ inventory_hostname }} --port {{ cdn_port }} --data-dir {{ cdn_root }}/data --budget-bytes {{ cdn_budget_bytes }} --entry-max-bytes {{ cdn_entry_max_bytes }} {{ cdn_extra_args }}
+Restart=always
+RestartSec=2
+StartLimitIntervalSec=0
+
+MemoryMax=1G
+LimitNOFILE=4096
+
+[Install]
+WantedBy=multi-user.target

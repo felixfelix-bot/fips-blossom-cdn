@@ -1,0 +1,110 @@
+{
+  "claims": {
+    "m1_correct_bytes": {
+      "key": "b11e7c2047ab70a1a194c87a3fa33d5f7b94d84a108e4c8e82cb4935aa51c6a8",
+      "object_bytes": 65544,
+      "per_replica": {
+        "hz-de-b": {
+          "ms": 328.4,
+          "result": "ok"
+        },
+        "hz-us-a": {
+          "ms": 2946.9,
+          "result": "ok"
+        },
+        "hz-us-b": {
+          "ms": 4391.3,
+          "result": "ok"
+        }
+      }
+    },
+    "m2_end_to_end": {
+      "forward": {
+        "attempts": 1,
+        "served_by": "hz-de-b",
+        "verified": true
+      },
+      "reverse": {
+        "attempts": 1,
+        "served_by": "hz-de-b",
+        "verified": true
+      }
+    },
+    "m2_order_independence": {
+      "config_order_forward": [
+        "hz-de-b",
+        "hz-us-a",
+        "hz-us-b"
+      ],
+      "config_order_reverse": [
+        "hz-us-b",
+        "hz-us-a",
+        "hz-de-b"
+      ],
+      "fastest_measured": "hz-de-b",
+      "measured_ms": {
+        "hz-de-b": 14.68,
+        "hz-us-a": 1052.33,
+        "hz-us-b": 1026.86
+      },
+      "note": "Both config orders pick the same measured-fastest node; swapping the list does not change the answer, so the choice is not positional.",
+      "passes": true,
+      "picked_with_forward_order": "hz-de-b",
+      "picked_with_reverse_order": "hz-de-b",
+      "slowest_measured": "hz-us-a"
+    },
+    "m3_failover": {
+      "attempts": 2,
+      "elapsed_ms": 3964.49,
+      "killed": true,
+      "killed_via": "/admin/crash",
+      "result": "ok",
+      "served_by": "hz-us-b",
+      "verified": true,
+      "victim": "hz-de-b",
+      "victim_marked_unhealthy": true
+    },
+    "m4_throughput": {
+      "cpu_seconds_on_replica": null,
+      "mib_per_s": 11.0,
+      "object_mib": 6.0,
+      "replica": "hz-de-b",
+      "seconds": 0.546,
+      "sha_ok": true
+    },
+    "m5_eviction": {
+      "evictions": 11,
+      "objects_pushed": 24,
+      "objects_pushed_bytes": 12582912,
+      "refetch_of_evicted_object_correct": true,
+      "replica": "hz-de-b",
+      "store_budget": 8388608,
+      "store_bytes_after": 7864439,
+      "within_budget": true
+    },
+    "m6_coalescing": {
+      "clients": 16,
+      "coalesced_waiters_delta": 15,
+      "errors": 10,
+      "upstream_fetches_delta": 1
+    }
+  },
+  "nodes": [
+    {
+      "name": "hz-de-a",
+      "url": "http://[fdb0:bf34:d648:96ac:f65a:3fd6:358:710b]:18080"
+    },
+    {
+      "name": "hz-de-b",
+      "url": "http://[fd97:77d4:cd27:a6ae:1b29:e92e:fd96:dee8]:18080"
+    },
+    {
+      "name": "hz-us-a",
+      "url": "http://[fdb8:d8ff:833c:6814:5865:55ac:3c98:afd9]:18080"
+    },
+    {
+      "name": "hz-us-b",
+      "url": "http://[fdfd:c0e5:3717:6cb1:bb60:de97:987e:7149]:18080"
+    }
+  ]
+}
