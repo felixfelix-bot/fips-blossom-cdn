@@ -90,7 +90,10 @@ class TestChunkedFetcher(unittest.TestCase):
 
     def test_corrupt_chunk_is_rejected_not_used(self):
         data = b"q" * 150000
-        manifest, chunks = split(data)
+        # Explicit chunk size: this test needs several chunks and must not
+        # depend on whatever DEFAULT_CHUNK happens to be.
+        manifest, chunks = split(data, chunk_size=64 * 1024)
+        self.assertGreater(len(chunks), 1)
         bad = hashlib.sha256(chunks[1]).hexdigest()
         t = FakeTransport(chunks, corrupt_hashes={bad})
         f = ChunkedFetcher(t, concurrency=2, retries=2, backoff=0.01)
