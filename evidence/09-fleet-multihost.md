@@ -118,9 +118,19 @@ Design decisions worth recording:
 
 ## What is still open
 
-- Throughput and eviction under real load on the fleet (`M4`, `M5`).
-- Repeated runs. One measurement is an anecdote; the selector claim deserves
-  several.
+Measured results are in `10-fleet-claims.md`; the short version is that M1–M5
+pass and **M6 is partial** — 10 of 16 concurrent clients failed even though
+coalescing produced a single upstream fill.
+
+Still open:
+
+- **M6 client delivery** — waiters do not reliably receive the coalesced result.
+- **Transatlantic throughput.** DE↔DE runs at 4.28 MB/s, DE→US at 3.4 kB/s.
+  `fips0` claims MTU 1280 but drops 1248-byte packets, and neither lowering the
+  MTU nor the nft allowlist explains it yet. Unresolved, and the reason M6 is
+  slow at distance.
+- **CPU attribution** for the 11 MiB/s figure (that run omitted `--ssh`).
+- Repeated runs. One measurement is a sample, not a distribution.
 - Authorization. Any node will serve any key it has; there is no access control
   on the mesh. On a four-host private mesh that is acceptable, and it is still
   an absence.

@@ -351,7 +351,7 @@ def main() -> int:
             "elapsed_ms": round((time.perf_counter() - t0) * 1000, 2),
             "verified": hashlib.sha256(res.body).hexdigest() == fo_key,
             "victim_marked_unhealthy": any(
-                (not r.healthy) for r in cat.replicas if r.npub == victim),
+                (not r.healthy) for r in cat.all() if r.npub == victim),
             **kill_info,
         }
     except NoReplicaAvailable as exc:
