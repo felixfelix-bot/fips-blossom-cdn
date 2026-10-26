@@ -1,0 +1,16 @@
+[Unit]
+Description=Clamp TCP MSS on fips0 to fit the real path MTU
+Documentation=https://github.com/felixfelix-bot/fips-blossom-cdn
+After=fips.service
+Wants=fips.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+# Re-applied after every fips restart: the interface is rebuilt by the daemon
+# and this table must exist before the next connection is negotiated.
+ExecStart=/usr/sbin/nft -f /etc/fips-mss.nft
+ExecStop=-/usr/sbin/nft delete table inet fips-mss
+
+[Install]
+WantedBy=multi-user.target

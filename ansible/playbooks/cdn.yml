@@ -121,6 +121,34 @@
           # the parent inbound chain in /etc/fips/fips.nft.
           tcp dport {{ cdn_port }} accept
 
+    - name: Render the MSS clamp ruleset
+      ansible.builtin.template:
+        src: "{{ playbook_dir }}/../roles/cdn-node/templates/fips-mss.nft.j2"
+        dest: /etc/fips-mss.nft
+        mode: "0644"
+
+    - name: Render the MSS clamp unit
+      ansible.builtin.template:
+        src: "{{ playbook_dir }}/../roles/cdn-node/templates/fips-mss.service.j2"
+        dest: /etc/systemd/system/fips-mss.service
+        mode: "0644"
+      register: mss_unit
+
+    - name: Enable and start the MSS clamp
+      ansible.builtin.systemd:
+        name: fips-mss.service
+        enabled: true
+        state: started
+        daemon_reload: "{{ mss_unit.changed }}"
+
+    # Read back from the node. The unit reporting "started" is not evidence that
+    # the table exists; a template error would leave nft with nothing loaded.
+    - name: Verify the clamp table is actually loaded
+      ansible.builtin.command: nft list table inet fips-mss
+      register: mss_check
+      changed_when: false
+      failed_when: "'maxseg' not in mss_check.stdout"
+
     - name: Render the unit
       ansible.builtin.template:
         src: "{{ playbook_dir }}/../roles/cdn-node/templates/cdn-node.service.j2"

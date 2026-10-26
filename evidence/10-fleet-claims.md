@@ -120,7 +120,39 @@ hypothesis is that the mesh drops long-idle TCP connections, which would need a
 `tcpdump` on the replica during a concurrent fill to confirm. **Unconfirmed —
 do not treat it as the answer.**
 
-### M6 resolved as to mechanism: transfers stall after ~20 KB
+### After fixing the MSS, M6 still fails — they are NOT one bug
+
+The path-MTU problem was real and is now fixed (see the throughput section: the
+same 512 KiB transfer went from 17.21 s to 2.13 s). The obvious inference was
+that M6 would come with it. **It did not.** Re-running M6 after deploying the
+MSS clamp to all four hosts:
+
+- clients 16, **ok 6, fail 10**, `TimeoutError`
+- 1 upstream fetch, 15 coalesced waiters — unchanged
+
+So my earlier claim that M6 and the throughput gap were one phenomenon was
+**wrong**, and this document previously said so. Corrected here.
+
+A second capture, taken with the clamp active (SYN and SYN-ACK both advertise
+`mss 1000`, confirmed in the trace), shows the stall has moved but not gone:
+
+| delivered | connections |
+|---|---|
+| complete object | 5 |
+| ~50,788 B | 2 |
+| ~33,005 B | 3 |
+| ~21,973 B | 2 |
+| **~19,556 B** | 7 |
+
+The consistent stall is now ~19,556 bytes. At the clamped segment size that is
+about **19-20 packets**; before clamping the stall was ~20,764 bytes, roughly
+**17-20 packets** at the old segment size. The bound looks like a packet count
+rather than a byte count, which would point at a fixed reorder/congestion window
+in the FIPS transport rather than at TCP segment sizing.
+
+**That is a hypothesis, not a finding.** I have not measured it. What I can say
+is that clamping MSS changed the single-stream rate by 8x and changed the
+concurrent-client failure not at all.
 
 A capture on the replica during a 16-client run (`scripts/pcap_conn_summary.py`)
 settles it. Nothing is dropped and nothing is reset:
@@ -169,16 +201,28 @@ coalescing deduplicates.
 ## What it does not establish
 
 - **M6 client delivery** — 10/16 concurrent clients failed.
-- **Throughput at distance.** The same 512 KiB test ran at 4.28 MB/s DE↔DE and
-  **3.4 kB/s** DE→US. `fips0` advertises MTU 1280; `ping6 -s 1150` (1198 bytes)
-  succeeds and `-s 1200` (1248 bytes) fails, while the nft drop counter does not
-  move during a stalled transfer. Full-size segments are being lost and the
-  Packet-Too-Big signal is not reaching the sender. Lowering the interface MTU
-  to 1100 made it worse, not better (the mesh address dropped entirely), so the
-  cause is not simply an overstated MTU. **Unresolved** — but note the packet
-  capture in the M6 section shows transfers stalling after ~20 KB, so 3.4 kB/s
-  is a stalled transfer measured end to end, not a steady-state rate. The two
-  open issues are one.
+- **Throughput at distance — FIXED.** Root cause was path MTU. `fips0` advertises
+  MTU 1280, so TCP negotiates MSS ~1220 and emits ~1260-byte segments, but the
+  real path drops anything above ~1198 bytes (`ping6 -s 1150` succeeds, `-s 1200`
+  fails) while the inbound nft drop counter stays still. Full-size segments were
+  silently discarded and retransmitted forever.
+
+  Fix: clamp the advertised MSS on `fips0` egress (`table inet fips-mss`, unit
+  `fips-mss.service`, in this repo's playbook). Measured on a 512 KiB transfer
+  DE→US, same object, same hosts:
+
+  | MSS | seconds |
+  |---|---|
+  | default (1220) | 17.21 |
+  | 1000 | 3.11 |
+  | 900 | 2.89 |
+  | 1000, clamped at both ends via nft | **2.13** |
+
+  The clamp has to exist on the receiving side, because an MSS option advertises
+  what the sender can *receive*: clamping only the origin left the transfer at
+  9.75 s, and adding it on the US host took it to 2.13 s.
+
+  This does **not** fix M6. See above — I predicted it would and was wrong.
 - **CPU-boundedness** of the 11 MiB/s figure (no `--ssh` on this run).
 - **Authorization.** Any node serves any key it holds.
 - **Range/resume.** Not implemented.
