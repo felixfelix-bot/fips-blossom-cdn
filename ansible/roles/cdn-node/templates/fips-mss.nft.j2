@@ -1,0 +1,35 @@
+#!/usr/sbin/nft -f
+#
+# MSS clamp for the FIPS mesh interface.
+#
+# Why: fips0 advertises MTU 1280, so the kernel advertises a TCP MSS around
+# 1220-1243. The real path carries ~1198-byte packets and silently drops
+# 1248-byte ones (measured: ping6 -s 1150 succeeds, -s 1200 fails, while the
+# inbound nft drop counter does not move). Full-size segments therefore vanish,
+# TCP retransmits the same too-big segment, and transfers stall after roughly
+# 20 KB.
+#
+# Clamping the advertised MSS makes every segment fit. Measured effect on a
+# 512 KiB transfer DE->US: 17.21 s at the default MSS, 3.11 s at 1000, 2.89 s
+# at 900.
+#
+# This lives in its own table rather than in /etc/fips/fips.nft because that
+# file's drop-ins are included into the `inbound` chain (input hook), and MSS
+# clamping has to happen on the way OUT.
+#
+# 1000 is chosen with margin: 1000 + 40 (IPv6) + 20 (TCP) = 1060 bytes, well
+# below the measured ~1198 ceiling, leaving room for encapsulation overhead that
+# might vary with the peer.
+
+# Idempotent: `destroy` removes the table if present and does nothing if it is
+# absent, so re-applying is safe. Without it, `nft -f` fails with "File exists"
+# on any host where the table is already loaded -- which is every host after the
+# first run, and made the unit fail on exactly the nodes that were already fixed.
+destroy table inet fips-mss
+
+table inet fips-mss {
+    chain postrouting {
+        type filter hook postrouting priority mangle; policy accept;
+        oifname "fips0" tcp flags syn tcp option maxseg size set 1000
+    }
+}

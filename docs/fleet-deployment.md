@@ -58,11 +58,16 @@ ansible-playbook -i inventory/fleet.yml playbooks/cdn.yml -e cdn_state=absent
    conclusion; see `09-fleet-multihost.md`.
 7. **Persist that allowance** across FIPS restarts, so a fleet reboot does not
    silently re-break the mesh.
-8. **Render, enable and start** `cdn-node.service`.
-9. **Assert `/health` returns 200** — not "the unit is active". A wrong
+8. **Install the MSS clamp** (`/etc/fips-mss.nft` + `fips-mss.service`). `fips0`
+   advertises MTU 1280 but the real path drops packets above ~1198 bytes, so
+   unclamped TCP segments are discarded and transfers crawl or stall. The task
+   asserts the table is loaded by reading it back, because a unit that reports
+   "started" with an empty ruleset would look like success.
+9. **Render, enable and start** `cdn-node.service`.
+10. **Assert `/health` returns 200** — not "the unit is active". A wrong
    `ExecStart` path produced 96 restarts in 3 minutes while systemd reported
    `activating`, not `failed`.
-10. **Report stats** per node so the run ends with evidence, not a green tick.
+11. **Report stats** per node so the run ends with evidence, not a green tick.
 
 ## Why the tarball
 
