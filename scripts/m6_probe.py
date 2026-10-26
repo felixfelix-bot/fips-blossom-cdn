@@ -16,7 +16,11 @@ import urllib.request
 
 ORIGIN = "http://[fdb0:bf34:d648:96ac:f65a:3fd6:358:710b]:18080"
 TARGET = "http://[fdfd:c0e5:3717:6cb1:bb60:de97:987e:7149]:18080"
-N = 16
+N = int(sys.argv[2]) if len(sys.argv) > 2 else 16
+# Object size matters: coalescing deduplicates the FILL, but every client still
+# receives the whole object. At 256 KiB x 16 = 4 MiB of egress the transatlantic
+# link, not the coalescer, decides the outcome.
+SIZE = int(sys.argv[1]) if len(sys.argv) > 1 else 256 * 1024
 
 
 def get(url, timeout):
@@ -31,7 +35,7 @@ def put(url, body, timeout):
 
 
 def main() -> int:
-    body = os.urandom(256 * 1024) + b"m6-probe"
+    body = os.urandom(SIZE) + b"m6-probe"
     key = hashlib.sha256(body).hexdigest()
     t0 = time.perf_counter()
     put(f"{ORIGIN}/blob", body, timeout=180)
