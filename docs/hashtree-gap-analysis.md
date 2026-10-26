@@ -12,10 +12,26 @@ The single most important finding is not about features. Hashtree does **not**
 run its blob traffic over kernel TCP on `fips0` the way we do. It has its own
 `FipsTcpEndpoint` / `fips-tcp` actor. That means our measured stall may be a
 property of *our* stack — Python `ThreadingHTTPServer` over the fips0 TUN — and
-not of the FIPS mesh at all. If that is true, hours spent treating the stall as
-a FIPS transport defect were spent in the wrong place.
+not of the FIPS mesh at all.
 
-That is testable, and it is the highest-value experiment available.
+**Update: it is not our stack.** Measured after writing this:
+
+- `curl` (a C client) reproduces the failure exactly — 6/16, `200` with zero
+  bytes for the other ten. The Python client is not implicated.
+- The replica's `fips0` transmitted ~2 MB during the run with **0 TX drops and
+  0 errors**, so the server handed the data to the mesh cleanly.
+- The ceiling is exactly **6 concurrent bulk flows** (N=2/4/6 all succeed, N=8
+  gives 6, N=12 gives 6, N=16 gives 6) and is deterministic across runs.
+- On the LAN the same test gives 15/16.
+
+So the bytes leave our stack correctly and still fail to arrive, and the bound
+tracks path latency rather than anything we control. The remaining suspects are
+inside the FIPS daemon's own per-flow handling. What hashtree buys is therefore
+narrower than first framed: unless its transport bypasses kernel TCP on `fips0`
+entirely, it would meet the same ceiling.
+
+See `evidence/11-chunked-transfer.md` for the numbers and the chunked workaround
+that removes the symptom without raising the ceiling.
 
 ## Where the systems actually differ
 
