@@ -28,7 +28,7 @@ GRID = {(r["chunk_kib"], r["clients"]): r for r in rows}
 plt.rcParams.update({
     "font.size": 12, "axes.titlesize": 15, "axes.labelsize": 13,
     "axes.spines.top": False, "axes.spines.right": False,
-    "figure.dpi": 160, "savefig.dpi": 160,
+    "figure.dpi": 160, "savefig.dpi": 160, "svg.fonttype": "none",
 })
 COLORS = {6: "#2563eb", 16: "#dc2626", 32: "#16a34a"}
 
@@ -76,7 +76,7 @@ def variant_a():
     ax2.grid(alpha=.25)
     ax2.set_title("A fast run that drops clients is not fast", loc="left", fontsize=12)
     fig.tight_layout()
-    fig.savefig(f"{OUT}/a_two_panel.png", bbox_inches="tight")
+    fig.savefig(f"{OUT}/a_two_panel.svg", bbox_inches="tight")
     plt.close(fig)
 
 
@@ -107,7 +107,7 @@ def variant_b():
     ax.set_title("Time and completion — red outline = did not complete", loc="left")
     fig.colorbar(im, ax=ax, label="median completion (s)")
     fig.tight_layout()
-    fig.savefig(f"{OUT}/b_heatmap.png", bbox_inches="tight")
+    fig.savefig(f"{OUT}/b_heatmap.svg", bbox_inches="tight")
     plt.close(fig)
 
 
@@ -134,7 +134,7 @@ def variant_c():
     ax.annotate("X = run did not complete", xy=(0.985, 0.03), xycoords="axes fraction",
                 ha="right", fontsize=10, color="#7f1d1d")
     fig.tight_layout()
-    fig.savefig(f"{OUT}/c_single_log.png", bbox_inches="tight")
+    fig.savefig(f"{OUT}/c_single_log.svg", bbox_inches="tight")
     plt.close(fig)
 
 
@@ -159,7 +159,7 @@ def variant_d():
     ax.legend(frameon=False)
     ax.grid(axis="y", alpha=.25)
     fig.tight_layout()
-    fig.savefig(f"{OUT}/d_bars.png", bbox_inches="tight")
+    fig.savefig(f"{OUT}/d_bars.svg", bbox_inches="tight")
     plt.close(fig)
 
 
@@ -184,7 +184,7 @@ def variant_e():
     ax.set_xlim(0, max(vals) * 1.35)
     ax.grid(axis="x", alpha=.25)
     fig.tight_layout()
-    fig.savefig(f"{OUT}/e_winners.png", bbox_inches="tight")
+    fig.savefig(f"{OUT}/e_winners.svg", bbox_inches="tight")
     plt.close(fig)
 
 

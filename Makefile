@@ -29,7 +29,7 @@ cdn-fleet-test:
 cdn-fleet-sweep:
 	@echo "1) on the replica host:  python3 scripts/sweep_matrix.py seed"
 	@echo "2) on the client host:  python3 scripts/sweep_matrix.py fetch 6,16,32"
-	@echo "3) locally:             python3 scripts/plot_sweep.py /tmp/sweep_matrix.json docs/sweep.svg"
+	@echo "3) locally:             python3 scripts/plot_variants.py evidence/sweep-matrix.json docs/plots"
 
 syntax:
 	@bash -n scripts/health-check.sh scripts/mk-fips-config.sh scripts/cdn_acceptance.sh
